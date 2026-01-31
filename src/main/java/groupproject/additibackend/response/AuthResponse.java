@@ -9,5 +9,4 @@ public class AuthResponse {
     @JsonProperty("user")
     private UserViewResponse user;
 
-
 }

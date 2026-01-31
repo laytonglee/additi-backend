@@ -10,5 +10,6 @@ public class UserViewResponse {
 
     private Long id;
     private String username;
-    private Set<Role> roles;
+//    private Set<Role> roles;
+    private String token;
 }
