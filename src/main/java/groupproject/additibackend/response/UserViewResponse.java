@@ -9,7 +9,8 @@ import java.util.Set;
 public class UserViewResponse {
 
     private Long id;
-    private String username;
-//    private Set<Role> roles;
-    private String token;
+    private String email;
+    private String firstName;
+    private String lastName;
+    private Set<String> role;
 }

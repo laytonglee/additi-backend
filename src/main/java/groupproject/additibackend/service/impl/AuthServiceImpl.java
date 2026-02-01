@@ -7,11 +7,11 @@ import groupproject.additibackend.response.AuthResponse;
 import groupproject.additibackend.response.UserViewResponse;
 import groupproject.additibackend.service.AuthService;
 import groupproject.additibackend.service.JwtService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
+
+import java.util.stream.Collectors;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -28,23 +28,20 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponse login(AuthLoginRequest request){
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getUsername(), request.getPassword()));
+        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
+        User user = userRepository.findByEmail(request.getUsername()).orElse(null);
 
-        User user = (User) authentication.getPrincipal();
-
-        String jwtToken = jwtService.generateAccessToken(user);
+        AuthResponse authResponse = new AuthResponse();
+        authResponse.setAccessToken(jwtService.getRefreshToken(user));
+        authResponse.setRefreshToken(jwtService.getRefreshToken(user));
+        authResponse.setType("Bearer");
 
         UserViewResponse userViewResponse = new UserViewResponse();
         userViewResponse.setId(user.getId());
-        userViewResponse.setUsername(user.getUsername());
-//        userViewResponse.setRoles(user.getRoles());
-        userViewResponse.setToken(jwtToken);
+        userViewResponse.setEmail(user.getEmail());
+        userViewResponse.setRole(user.getRoles().stream().map(role -> role.getName()).collect(Collectors.toSet()));
 
-        AuthResponse authResponse = new AuthResponse();
         authResponse.setUser(userViewResponse);
-
         return authResponse;
 
     }

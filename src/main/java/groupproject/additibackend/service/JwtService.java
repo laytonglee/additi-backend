@@ -67,4 +67,15 @@ public class JwtService {
     private boolean isTokenExpired(String token) {
         return extractClaim(token, Claims::getExpiration).before(new Date());
     }
+
+    public String getRefreshToken(User user){
+        return Jwts.builder()
+                .setSubject(user.getUsername())
+                .setClaims(new HashMap<>())
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis()
+                        + jwtProperties.getRefreshExpiration()))
+                .signWith(getSigninKey())
+                .compact();
+    }
 }
