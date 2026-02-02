@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class TestController {
 
     @GetMapping("/dashboard")
-    public ResponseEntity<String> home (){
+    public ResponseEntity<String> home() {
         return new ResponseEntity<>("This can be seen after login", HttpStatus.OK);
     }
 }

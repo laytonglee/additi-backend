@@ -4,7 +4,6 @@ import groupproject.additibackend.config.JwtProperties;
 import groupproject.additibackend.model.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -22,12 +21,11 @@ public class JwtService {
 
     private final JwtProperties jwtProperties;
 
-
     private SecretKey getSigninKey() {
         return Keys.hmacShaKeyFor("aIePkZH6PEwX2GloR9Lquafw0F7GQyts4GzglUPZXWKMNBJ1ZkZOZN5nDmugNPPXRU9bl0BnrrQ+AoMZ3h0yQA==".getBytes());
 
     }
-    public String generateAccessToken(User user) {
+    public String getAccessToken(User user) {
 
         Map<String, Object> claims = new HashMap<>();
         claims.put("uid", user.getId());

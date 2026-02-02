@@ -27,22 +27,41 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public AuthResponse login(AuthLoginRequest request){
-        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
-        User user = userRepository.findByEmail(request.getUsername()).orElse(null);
+    public AuthResponse login(AuthLoginRequest request) {
 
+        // 1️⃣ Authenticate credentials
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        request.getUsername(),
+                        request.getPassword()
+                )
+        );
+
+        // 2️⃣ Load user safely
+        User user = userRepository.findByEmail(request.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // 3️⃣ Generate ACCESS token only
+        String accessToken = jwtService.getAccessToken(user);
+
+        // 4️⃣ Build response
         AuthResponse authResponse = new AuthResponse();
-        authResponse.setAccessToken(jwtService.getRefreshToken(user));
-        authResponse.setRefreshToken(jwtService.getRefreshToken(user));
+        authResponse.setAccessToken(accessToken);
         authResponse.setType("Bearer");
 
-        UserViewResponse userViewResponse = new UserViewResponse();
-        userViewResponse.setId(user.getId());
-        userViewResponse.setEmail(user.getEmail());
-        userViewResponse.setRole(user.getRoles().stream().map(role -> role.getName()).collect(Collectors.toSet()));
+        // 5️⃣ User view
+        UserViewResponse userView = new UserViewResponse();
+        userView.setId(user.getId());
+        userView.setEmail(user.getEmail());
+        userView.setRole(
+                user.getRoles()
+                        .stream()
+                        .map(role -> role.getName())
+                        .collect(Collectors.toSet())
+        );
 
-        authResponse.setUser(userViewResponse);
+        authResponse.setUser(userView);
         return authResponse;
-
     }
+
 }
