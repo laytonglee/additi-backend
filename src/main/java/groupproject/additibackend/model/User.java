@@ -1,6 +1,7 @@
 package groupproject.additibackend.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
 import lombok.Getter;
 import lombok.Setter;
 import org.jspecify.annotations.Nullable;
@@ -23,8 +24,19 @@ public class User implements UserDetails {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
+    private String username;
+
+    @Email
     @Column(nullable = false, unique = true)
     private String email;
+
+    private String phoneNumber;
+
+    private String address;
+
+    @Column(length = 500)
+    private String bio;
 
     @Column(nullable = false)
     private String password;
