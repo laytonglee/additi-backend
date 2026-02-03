@@ -7,10 +7,6 @@ import jakarta.validation.constraints.Size;
 import lombok.*;
 
 @Data
-@Getter
-@Setter
-@RequiredArgsConstructor
-@NoArgsConstructor
 public class RegisterRequest {
 
     @NotBlank
@@ -20,7 +16,6 @@ public class RegisterRequest {
     @NotBlank
     private String email;
 
-    @NotBlank
     private String phoneNumber;
 
     private String address;

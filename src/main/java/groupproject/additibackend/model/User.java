@@ -35,6 +35,8 @@ public class User implements UserDetails {
 
     private String address;
 
+    private String photo;
+
     @Column(length = 500)
     private String bio;
 
