@@ -4,11 +4,13 @@ import groupproject.additibackend.model.User;
 import groupproject.additibackend.repository.UserRepository;
 import groupproject.additibackend.request.AuthLoginRequest;
 import groupproject.additibackend.response.AuthResponse;
+import groupproject.additibackend.response.MeResponse;
 import groupproject.additibackend.response.UserViewResponse;
 import groupproject.additibackend.service.AuthService;
 import groupproject.additibackend.service.JwtService;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import java.util.stream.Collectors;
@@ -63,5 +65,23 @@ public class AuthServiceImpl implements AuthService {
         authResponse.setUser(userView);
         return authResponse;
     }
+
+    @Override
+    public MeResponse me(Authentication authentication) {
+
+        // Because getUsername() returns email
+        String email = authentication.getName();
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        MeResponse res = new MeResponse();
+        res.setId(user.getId());
+        res.setEmail(user.getEmail());
+        res.setUsername(user.getUsername());
+
+        return res;
+    }
+
 
 }

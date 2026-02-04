@@ -4,15 +4,15 @@ import groupproject.additibackend.model.User;
 import groupproject.additibackend.request.AuthLoginRequest;
 import groupproject.additibackend.response.AuthResponse;
 
+import groupproject.additibackend.response.MeResponse;
 import groupproject.additibackend.service.AuthService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.Getter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -28,4 +28,10 @@ public class AuthController {
     public ResponseEntity<AuthResponse> login (@RequestBody AuthLoginRequest loginRequest){
         return new ResponseEntity<>(authService.login(loginRequest), HttpStatus.OK);
     }
+
+    @GetMapping("/me")
+    public ResponseEntity<MeResponse> me(Authentication authentication) {
+        return ResponseEntity.ok(authService.me(authentication));
+    }
+
 }
