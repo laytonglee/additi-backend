@@ -14,4 +14,5 @@ public class PublicAPIRestController {
     public ResponseEntity<String> testController () {
         return new ResponseEntity<>("Hello from test controller", HttpStatus.OK);
     }
+
 }
