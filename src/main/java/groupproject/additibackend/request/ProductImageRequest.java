@@ -1,27 +1,19 @@
-package groupproject.additibackend.model;
+package groupproject.additibackend.request;
 
-import jakarta.persistence.*;
+
+import jakarta.persistence.Column;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import org.hibernate.validator.constraints.URL;
 
-import java.time.LocalDateTime;
-import java.util.Date;
-
+@Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Getter @Setter
-@Entity
-@Table(name="product_images")
-public class ProductImage {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class ProductImageRequest {
 
     @NotBlank(message = "Image URL is required")
     @URL(message = "Image URL must be a valid URL")
@@ -36,15 +28,4 @@ public class ProductImage {
     @Column(nullable = false, length = 255)
     private String imageKey;
 
-
-
-
-    @Column(updatable = false)
-    private LocalDateTime uploadedAt;
-
-    @ManyToOne
-    @JoinColumn(name = "variant_id")
-    private ProductVariant variant;
-
 }
-
