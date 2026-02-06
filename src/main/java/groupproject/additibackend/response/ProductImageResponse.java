@@ -1,6 +1,5 @@
 package groupproject.additibackend.response;
 
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,15 +11,11 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CategoryResponse {
+public class ProductImageResponse{
 
     private Long id;
-    private String name;
-    private String slug;
-    private String description;
-    private Boolean isActive;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-    private Integer productCount;
+    private String imageUrl;
+    private String imageKey;
+    private LocalDateTime uploadedAt;
 
 }

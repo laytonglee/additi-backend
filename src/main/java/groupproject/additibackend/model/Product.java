@@ -28,6 +28,7 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Id
     private Long id;
+
     @NotBlank(message = "Product name is required")
     @Size(min=2,max=255,message = "Product name must be between 2 and 255 characters")
     @Column(nullable = false,length = 255)

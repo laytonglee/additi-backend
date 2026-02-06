@@ -2,7 +2,7 @@ package groupproject.additibackend.config;
 
 import groupproject.additibackend.model.*;
 import groupproject.additibackend.repository.CategoryRepository;
-import groupproject.additibackend.repository.ProductReponsitory;
+import groupproject.additibackend.repository.ProductRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 public class SeedDataConfig {
 
     @Bean
-    CommandLineRunner seed(CategoryRepository categoryRepo, ProductReponsitory productRepo) {
+    CommandLineRunner seed(CategoryRepository categoryRepo, ProductRepository productRepo) {
         return args -> {
 
             // avoid duplicate seed
