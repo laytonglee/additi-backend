@@ -2,7 +2,7 @@ package groupproject.additibackend.service.impl;
 
 import groupproject.additibackend.model.*;
 import groupproject.additibackend.repository.CartRepository;
-import groupproject.additibackend.repository.ProductReponsitory;
+import groupproject.additibackend.repository.ProductRepository;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -11,9 +11,9 @@ import java.math.BigDecimal;
 public class CartServiceImpl implements groupproject.additibackend.service.CartService {
 
     private final CartRepository cartRepository;
-    private final ProductReponsitory productRepository;
+    private final ProductRepository productRepository;
 
-    public CartServiceImpl(CartRepository cartRepository, ProductReponsitory productRepository) {
+    public CartServiceImpl(CartRepository cartRepository, ProductRepository productRepository) {
         this.cartRepository = cartRepository;
         this.productRepository = productRepository;
     }
