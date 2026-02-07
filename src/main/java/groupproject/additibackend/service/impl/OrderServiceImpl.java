@@ -14,7 +14,7 @@ import groupproject.additibackend.model.Product;
 import groupproject.additibackend.model.ProductVariant;
 import groupproject.additibackend.model.User;
 import groupproject.additibackend.repository.OrderRepository;
-import groupproject.additibackend.repository.ProductReponsitory;
+import groupproject.additibackend.repository.ProductRepository;
 import groupproject.additibackend.repository.ProductVariantRepository;
 import groupproject.additibackend.request.CheckoutRequest;
 
@@ -22,11 +22,11 @@ import groupproject.additibackend.request.CheckoutRequest;
 public class OrderServiceImpl implements groupproject.additibackend.service.OrderService {
 
     private final OrderRepository orderRepository;
-    private final ProductReponsitory productRepository;
+    private final ProductRepository productRepository;
     private final ProductVariantRepository productVariantRepository;
 
     public OrderServiceImpl(OrderRepository orderRepository, 
-                           ProductReponsitory productRepository,
+                           ProductRepository productRepository,
                            ProductVariantRepository productVariantRepository) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
