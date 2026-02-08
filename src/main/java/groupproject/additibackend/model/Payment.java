@@ -44,6 +44,8 @@ public class Payment {
     private String transactionId;
 
     private String khqrCode;
+    
+    private String md5Hash; // MD5 hash of KHQR for payment verification
 
     private LocalDateTime createdAt = LocalDateTime.now();
 

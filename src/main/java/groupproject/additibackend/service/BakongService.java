@@ -7,20 +7,25 @@ import groupproject.additibackend.model.Order;
 public interface BakongService {
     
     /**
+     * KHQR result containing both QR string and MD5 hash for verification
+     */
+    record KHQRResult(String qr, String md5Hash) {}
+    
+    /**
      * Generate a KHQR code for payment
      * @param order The order to generate payment for
-     * @return The KHQR string (to be converted to QR image on frontend)
+     * @return KHQRResult with both QR string and MD5 hash
      */
-    String generateKHQR(Order order);
+    KHQRResult generateKHQR(Order order);
     
     /**
      * Generate KHQR with custom amount
      * @param amount Payment amount
      * @param currency USD or KHR
      * @param transactionId Unique transaction reference
-     * @return The KHQR string
+     * @return KHQRResult with both QR string and MD5 hash
      */
-    String generateKHQR(BigDecimal amount, String currency, String transactionId);
+    KHQRResult generateKHQR(BigDecimal amount, String currency, String transactionId);
     
     /**
      * Verify if a payment was successful
