@@ -37,8 +37,6 @@ public class ProductImage {
     private String imageKey;
 
 
-
-
     @Column(updatable = false)
     private LocalDateTime uploadedAt;
 

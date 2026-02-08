@@ -1,8 +1,10 @@
 package groupproject.additibackend.config;
 
-
+import jakarta.annotation.PostConstruct;
 import lombok.Getter;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -14,44 +16,58 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import java.net.URI;
 
 @Configuration
+@ConfigurationProperties(prefix = "cloudflare.r2")
 @Getter
+@Setter
+@Slf4j
 public class R2Config {
 
-    @Value("${cloudflare.r2.access-key-id}")
+    private String accountId;
     private String accessKeyId;
-
-    @Value("${cloudflare.r2.secret-access-key}")
     private String secretAccessKey;
-
-    @Value("${cloudflare.r2.endpoint}")
     private String endpoint;
-
-    @Value("${cloudflare.r2.bucket-name}")
     private String bucketName;
-
-    @Value("${cloudflare.r2.public-url}")
     private String publicUrl;
-
-    @Value("${cloudflare.r2.region}")
     private String region;
+
+    /**
+     * Runs on startup to verify the length of your key exactly as Spring sees it.
+     */
+    @PostConstruct
+    public void validateCredentials() {
+        if (accessKeyId == null || accessKeyId.trim().length() != 32) {
+            log.error("CRITICAL: R2 Access Key ID is INVALID. Current length: {}. Expected: 32.",
+                    accessKeyId != null ? accessKeyId.trim().length() : "NULL");
+        } else {
+            log.info("R2 Credentials validated. AccessKey length: {}", accessKeyId.trim().length());
+        }
+    }
 
     @Bean
     public S3Client s3Client() {
-        AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKeyId, secretAccessKey);
+        // Force trim to remove any invisible newline or space characters from .env
+        String cleanAccessKey = (accessKeyId != null) ? accessKeyId.trim() : "";
+        String cleanSecretKey = (secretAccessKey != null) ? secretAccessKey.trim() : "";
+
+        AwsBasicCredentials credentials = AwsBasicCredentials.create(cleanAccessKey, cleanSecretKey);
 
         return S3Client.builder()
-                .region(Region.of(region))
+                .region(Region.of(region != null ? region : "auto"))
                 .endpointOverride(URI.create(endpoint))
+                // StaticCredentialsProvider ensures it uses your code's keys, NOT system env variables
                 .credentialsProvider(StaticCredentialsProvider.create(credentials))
                 .build();
     }
 
     @Bean
     public S3Presigner s3Presigner() {
-        AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKeyId, secretAccessKey);
+        String cleanAccessKey = (accessKeyId != null) ? accessKeyId.trim() : "";
+        String cleanSecretKey = (secretAccessKey != null) ? secretAccessKey.trim() : "";
+
+        AwsBasicCredentials credentials = AwsBasicCredentials.create(cleanAccessKey, cleanSecretKey);
 
         return S3Presigner.builder()
-                .region(Region.of(region))
+                .region(Region.of(region != null ? region : "auto"))
                 .endpointOverride(URI.create(endpoint))
                 .credentialsProvider(StaticCredentialsProvider.create(credentials))
                 .build();
