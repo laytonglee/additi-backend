@@ -8,9 +8,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class MeResponse {
-    private Long id;
     private String username;
     private String email;
     private String photo;
-//    private String role; // optional
+    private String phoneNumber;
+    private String address;
 }

@@ -97,7 +97,6 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         MeResponse res = new MeResponse();
-        res.setId(user.getId());
         res.setEmail(user.getEmail());
         res.setUsername(user.getUsername());
 

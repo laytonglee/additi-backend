@@ -54,6 +54,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/**").permitAll()
                 // keep these protected
                 .requestMatchers("/api/auth/me").authenticated()
+                .requestMatchers("/api/auth/profile").authenticated()
+                .requestMatchers("/dashboard").authenticated()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/auth/logout").permitAll()
                 .anyRequest().authenticated()
