@@ -10,12 +10,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.Authentication;
 
 public interface AuthService {
-    AuthResponse login(AuthLoginRequest request, HttpServletResponse response);
+    AuthResponse login(AuthLoginRequest request);
     MeResponse me(Authentication authentication);
-    void logout(HttpServletRequest request, HttpServletResponse response);
-
-    UserProfileResponse getProfile (Authentication authentication);
-    UserProfileResponse updateProfile (Authentication authentication, UpdateProfileRequest request);
-
-    AuthResponse refreshToken(HttpServletRequest request, HttpServletResponse response);
+    void logout(String refreshToken, HttpServletResponse response);
 }
