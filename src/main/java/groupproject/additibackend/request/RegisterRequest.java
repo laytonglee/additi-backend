@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @Data
 public class RegisterRequest {
@@ -22,7 +23,7 @@ public class RegisterRequest {
 
     private String bio;
 
-    private String photo;
+    private MultipartFile photo;
 
     @NotBlank
     @Size(min=6)
@@ -30,5 +31,4 @@ public class RegisterRequest {
 
     @NotBlank
     private String confirmPassword;
-
 }

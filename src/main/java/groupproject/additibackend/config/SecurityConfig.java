@@ -52,6 +52,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/categories/**").permitAll()
                 // permit auth endpoints
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/users/register").permitAll()
                 // keep these protected
                 .requestMatchers("/api/auth/me").authenticated()
                 .requestMatchers("/api/auth/profile").authenticated()
