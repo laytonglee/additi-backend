@@ -1,14 +1,13 @@
 package groupproject.additibackend.service.impl;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
 import groupproject.additibackend.model.User;
 import groupproject.additibackend.repository.UserRepository;
 import groupproject.additibackend.request.RegisterRequest;
 import groupproject.additibackend.response.RegisterResponse;
 import groupproject.additibackend.service.RegisterService;
-import org.springframework.context.annotation.Bean;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
 
 @Service
 public class RegisterServiceImpl implements RegisterService{
