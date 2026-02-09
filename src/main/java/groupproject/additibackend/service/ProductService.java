@@ -16,14 +16,20 @@ public interface ProductService {
     ProductResponse createProduct(ProductCreateRequest request);
 
     PageResponse<ProductResponse> getAllProducts(
-            String  categorySlug,
+            String search,
+            String categorySlug,
             BigDecimal minPrice,
             BigDecimal maxPrice,
             LocalDate startDate,
             LocalDate endDate,
             Pageable pageable);
 
-
     ProductResponse uploadImage(Long productId, Long variantId, List<MultipartFile> files) throws IOException;
+
+    ProductResponse getProductById(Long id);
+
+    void deleteProduct(Long id);
+
+
 
 }

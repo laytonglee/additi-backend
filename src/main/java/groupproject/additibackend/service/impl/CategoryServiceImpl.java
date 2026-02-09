@@ -1,5 +1,6 @@
 package groupproject.additibackend.service.impl;
 
+import groupproject.additibackend.exception.ResourceNotFoundException;
 import groupproject.additibackend.mapper.CategoryMapper;
 import groupproject.additibackend.model.Category;
 import groupproject.additibackend.repository.CategoryRepository;
@@ -10,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -33,7 +35,10 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public CategoryResponse getCategoryById(Long id) {
-        return null;
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
+
+        return categoryMapper.toCategoryResponse(category);
     }
 
     @Override
@@ -44,12 +49,36 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    public CategoryResponse updateCategory(CategoryRequest request) {
-        return null;
+    public CategoryResponse updateCategory(Long id,CategoryRequest request) {
+
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
+
+        if (!category.getName().equalsIgnoreCase(request.getName()) &&
+                categoryRepository.existsByNameIgnoreCase(request.getName())) {
+            throw new ResourceNotFoundException("Category already exists with name: " + request.getName());
+        }
+
+        category.setName(request.getName());
+        category.setDescription(request.getDescription());
+        category.setIsActive(request.getIsActive());
+        category.setUpdatedAt(LocalDateTime.now());
+
+        Category updatedCategory = categoryRepository.save(category);
+
+        return categoryMapper.toCategoryResponse(updatedCategory);
     }
 
     @Override
     public void deleteCategory(Long id) {
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
 
+        Long productCount = categoryRepository.countProductsByCategoryId(id);
+        if (productCount > 0) {
+            throw new ResourceNotFoundException("Cannot delete category with existing products");
+        }
+
+        categoryRepository.delete(category);
     }
 }
