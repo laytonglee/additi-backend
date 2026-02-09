@@ -1,5 +1,7 @@
 package groupproject.additibackend.request;
 
+import org.springframework.web.multipart.MultipartFile;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -21,7 +23,7 @@ public class RegisterRequest {
 
     private String bio;
 
-    private String photo;
+    private MultipartFile photo;
 
     @NotBlank
     @Size(min=6)
@@ -29,5 +31,4 @@ public class RegisterRequest {
 
     @NotBlank
     private String confirmPassword;
-
 }

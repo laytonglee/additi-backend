@@ -70,12 +70,11 @@ public class AuthServiceImpl implements AuthService {
         authResponse.setType("Bearer");
 
 
-
-
         // 5️ User view
         UserViewResponse userView = new UserViewResponse();
         userView.setId(user.getId());
         userView.setEmail(user.getEmail());
+        userView.setUsername(user.getRealUsername());
         userView.setRole(
                 user.getRoles()
                         .stream()
@@ -98,7 +97,10 @@ public class AuthServiceImpl implements AuthService {
 
         MeResponse res = new MeResponse();
         res.setEmail(user.getEmail());
-        res.setUsername(user.getUsername());
+        res.setUsername(user.getRealUsername());
+        res.setPhoto(user.getPhoto());
+        res.setAddress(user.getAddress());
+        res.setPhoneNumber(user.getPhoneNumber());
 
         return res;
     }
@@ -117,4 +119,5 @@ public class AuthServiceImpl implements AuthService {
         cookie.setMaxAge(0); // 🔥 DELETE cookie
         response.addCookie(cookie);
     }
+
 }

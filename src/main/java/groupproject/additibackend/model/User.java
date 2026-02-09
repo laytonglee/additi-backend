@@ -37,6 +37,9 @@ public class User implements UserDetails {
 
     private String photo;
 
+    @Column(name = "photo_key")
+    private String photoKey;
+
     @Column(length = 500)
     private String bio;
 
