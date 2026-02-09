@@ -54,7 +54,10 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/**").permitAll()
                 // keep these protected
                 .requestMatchers("/api/auth/me").authenticated()
+                .requestMatchers("/api/auth/profile").authenticated()
+                .requestMatchers("/dashboard").authenticated()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/auth/logout").permitAll()
                 .anyRequest().authenticated()
         );
 
@@ -89,8 +92,8 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource () {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:3000"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE"));
+        config.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:5173", "http://localhost:4200"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowCredentials(true);
         config.addAllowedHeader("*");
 

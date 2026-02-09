@@ -2,6 +2,8 @@ package groupproject.additibackend.response;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 @Data
 public class AuthResponse {
@@ -14,9 +16,6 @@ public class AuthResponse {
 
     @JsonProperty("type")
     private String type = "Bearer";
-
-    @JsonProperty("expires_in")
-    private String expiresIn;
 
     @JsonProperty("user")
     private UserViewResponse user;

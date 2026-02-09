@@ -1,9 +1,9 @@
 package groupproject.additibackend.response;
 
-import lombok.Data;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+
+import lombok.Data;
 
 @Data
 public class PaymentResponse {
@@ -14,6 +14,7 @@ public class PaymentResponse {
     private BigDecimal amount;
     private String transactionId;
     private String khqrCode;
+    private String md5Hash; // Used to verify payment with Bakong
     private LocalDateTime createdAt;
     private LocalDateTime paidAt;
 }

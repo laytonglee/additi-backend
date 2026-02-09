@@ -1,20 +1,31 @@
 package groupproject.additibackend.service.impl;
 
-import groupproject.additibackend.config.BakongProperties;
-import groupproject.additibackend.model.Order;
-import groupproject.additibackend.service.BakongService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.*;
-import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
-
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import groupproject.additibackend.config.BakongProperties;
+import groupproject.additibackend.khqr.BakongKHQR;
+import groupproject.additibackend.khqr.IndividualInfo;
+import groupproject.additibackend.khqr.KHQRCurrency;
+import groupproject.additibackend.khqr.KHQRData;
+import groupproject.additibackend.khqr.KHQRResponse;
+import groupproject.additibackend.model.Order;
+import groupproject.additibackend.service.BakongService;
 
 @Service
 @SuppressWarnings("unchecked")
@@ -31,7 +42,7 @@ public class BakongServiceImpl implements BakongService {
     }
     
     @Override
-    public String generateKHQR(Order order) {
+    public KHQRResult generateKHQR(Order order) {
         return generateKHQR(
             order.getTotalAmount(),
             bakongProperties.getCurrency(),
@@ -40,121 +51,35 @@ public class BakongServiceImpl implements BakongService {
     }
     
     @Override
-    public String generateKHQR(BigDecimal amount, String currency, String transactionId) {
-        try {
-            String url = bakongProperties.getApiUrl() + "/v1/generate_deeplink_by_qr";
-            
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(bakongProperties.getToken());
-            
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("bank_account", bakongProperties.getAccountId());
-            requestBody.put("merchant_name", bakongProperties.getMerchantName());
-            requestBody.put("merchant_id", bakongProperties.getMerchantId());
-            requestBody.put("amount", amount.doubleValue());
-            requestBody.put("currency", currency); // "USD" or "KHR"
-            requestBody.put("bill_number", transactionId);
-            requestBody.put("store_label", bakongProperties.getMerchantName());
-            requestBody.put("terminal_label", "POS-01");
-            
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-            
-            ResponseEntity<Map> response = restTemplate.exchange(
-                url,
-                HttpMethod.POST,
-                entity,
-                Map.class
-            );
-            
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                Map<String, Object> body = response.getBody();
-                if (body.containsKey("data")) {
-                    Map<String, Object> data = (Map<String, Object>) body.get("data");
-                    return (String) data.get("qr"); // The KHQR string
-                }
-            }
-            
-            throw new RuntimeException("Failed to generate KHQR");
-            
-        } catch (Exception e) {
-            log.error("Error generating KHQR: {}", e.getMessage());
-            // Fallback to manual KHQR generation if API fails
-            return generateManualKHQR(amount, currency, transactionId);
+    public KHQRResult generateKHQR(BigDecimal amount, String currency, String transactionId) {
+        // Use the SDK-style KHQR generation
+        IndividualInfo individualInfo = new IndividualInfo();
+        individualInfo.setBakongAccountId(bakongProperties.getAccountId());
+        individualInfo.setAcquiringBank(bakongProperties.getMerchantName());
+        individualInfo.setCurrency("USD".equals(currency) ? KHQRCurrency.USD : KHQRCurrency.KHR);
+        individualInfo.setAmount(amount.doubleValue());
+        individualInfo.setMerchantName(bakongProperties.getMerchantName());
+        individualInfo.setMerchantCity("PHNOM PENH");
+        individualInfo.setBillNumber(transactionId);
+        individualInfo.setStoreLabel(bakongProperties.getMerchantName());
+        individualInfo.setTerminalLabel("POS-01");
+        
+        KHQRResponse<KHQRData> response = BakongKHQR.generateIndividual(individualInfo);
+        
+        if (response.getKHQRStatus().getCode() == 0) {
+            log.info("KHQR generated successfully. MD5: {}", response.getData().getMd5());
+            return new KHQRResult(response.getData().getQr(), response.getData().getMd5());
+        } else {
+            log.error("Failed to generate KHQR: {}", response.getKHQRStatus().getMessage());
+            throw new RuntimeException("Failed to generate KHQR: " + response.getKHQRStatus().getMessage());
         }
     }
     
     /**
-     * Manual KHQR generation following EMVCo QR Code Specification
-     * This is a fallback if the API is not available
+     * Generate KHQR using IndividualInfo (SDK-style)
      */
-    private String generateManualKHQR(BigDecimal amount, String currency, String transactionId) {
-        StringBuilder qr = new StringBuilder();
-        
-        // Payload Format Indicator
-        qr.append("000201");
-        
-        // Point of Initiation Method (12 = dynamic QR)
-        qr.append("010212");
-        
-        // Merchant Account Information (Tag 29 for Bakong)
-        String accountId = bakongProperties.getAccountId();
-        String merchantAccountInfo = "0006" + accountId.substring(accountId.indexOf("@") + 1).toUpperCase() + 
-                                     "01" + String.format("%02d", accountId.length()) + accountId;
-        qr.append("29").append(String.format("%02d", merchantAccountInfo.length())).append(merchantAccountInfo);
-        
-        // Merchant Category Code
-        qr.append("52045999");
-        
-        // Transaction Currency (840 = USD, 116 = KHR)
-        String currencyCode = "USD".equals(currency) ? "840" : "116";
-        qr.append("5303").append(currencyCode);
-        
-        // Transaction Amount
-        String amountStr = amount.setScale(2).toPlainString();
-        qr.append("54").append(String.format("%02d", amountStr.length())).append(amountStr);
-        
-        // Country Code
-        qr.append("5802KH");
-        
-        // Merchant Name
-        String merchantName = bakongProperties.getMerchantName();
-        qr.append("59").append(String.format("%02d", merchantName.length())).append(merchantName);
-        
-        // Merchant City
-        qr.append("6010Phnom Penh");
-        
-        // Additional Data Field (Bill Number)
-        String billNumber = "01" + String.format("%02d", transactionId.length()) + transactionId;
-        qr.append("62").append(String.format("%02d", billNumber.length())).append(billNumber);
-        
-        // CRC placeholder (will be calculated)
-        qr.append("6304");
-        
-        // Calculate CRC16
-        String crc = calculateCRC16(qr.toString());
-        qr.append(crc);
-        
-        return qr.toString();
-    }
-    
-    private String calculateCRC16(String data) {
-        int crc = 0xFFFF;
-        int polynomial = 0x1021;
-        
-        byte[] bytes = data.getBytes(StandardCharsets.UTF_8);
-        for (byte b : bytes) {
-            for (int i = 0; i < 8; i++) {
-                boolean bit = ((b >> (7 - i)) & 1) == 1;
-                boolean c15 = ((crc >> 15) & 1) == 1;
-                crc <<= 1;
-                if (c15 ^ bit) {
-                    crc ^= polynomial;
-                }
-            }
-        }
-        crc &= 0xFFFF;
-        return String.format("%04X", crc);
+    public KHQRResponse<KHQRData> generateIndividualKHQR(IndividualInfo info) {
+        return BakongKHQR.generateIndividual(info);
     }
     
     @Override
