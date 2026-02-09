@@ -45,6 +45,7 @@ public class ProductController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "DESC") String direction,
+            @RequestParam(required = false) String search,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
@@ -58,9 +59,21 @@ public class ProductController {
         Pageable pageable = PageRequest.of(page, size, sort);
 
         PageResponse<ProductResponse> response = productService.getAllProducts(
-                category, minPrice, maxPrice, startDate, endDate, pageable);
+                search, category, minPrice, maxPrice, startDate, endDate, pageable);
 
         return ResponseEntity.ok(ApiResponse.success(response, "Products retrieved successfully"));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<ProductResponse>> getProductById(@PathVariable Long id) {
+        ProductResponse response = productService.getProductById(id);
+        return ResponseEntity.ok(ApiResponse.success(response, "Product retrieved successfully"));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteProduct(@PathVariable Long id) {
+        productService.deleteProduct(id);
+        return ResponseEntity.ok(ApiResponse.success(null, "Product deleted successfully"));
     }
 
     @PostMapping("/{productId}/variants/{variantId}/images")

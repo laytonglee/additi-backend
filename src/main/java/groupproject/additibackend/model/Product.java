@@ -3,10 +3,7 @@ package groupproject.additibackend.model;
 import jakarta.persistence.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -18,6 +15,7 @@ import java.util.List;
 @Setter
 @Getter
 @Entity
+@Builder
 @Table(name="products", indexes = {
         @Index(name="idx_product_name",columnList = "name"),
         @Index(name="idx_product_category",columnList = "category_id"),
@@ -31,11 +29,12 @@ public class Product {
 
     @NotBlank(message = "Product name is required")
     @Size(min=2,max=255,message = "Product name must be between 2 and 255 characters")
-    @Column(nullable = false,length = 255)
+    @Column(nullable = false,columnDefinition = "VARCHAR(255)")
+
     private String name;
 
     @Size(max = 2000, message = "Description must not exceed 2000 characters")
-    @Column(length = 2000)
+    @Column(columnDefinition = "VARCHAR(2000)")
     private String description;
 
 
@@ -47,7 +46,7 @@ public class Product {
     private BigDecimal price;
 
     @Size(max = 100, message = "Brand name must not exceed 100 characters")
-    @Column(length = 100)
+    @Column(columnDefinition = "VARCHAR(255)")
     private String brand;
 
     @NotNull(message = "Active status is required")

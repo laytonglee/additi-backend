@@ -62,19 +62,6 @@ public class ProductServiceImpl implements ProductService {
         return productMapper.toResponse(savedProduct);
     }
 
-    @Override
-    public PageResponse<ProductResponse> getAllProducts(
-            String category,
-            BigDecimal minPrice,
-            BigDecimal maxPrice,
-            LocalDate startDate,
-            LocalDate endDate,
-            Pageable pageable) {
-
-        Page<Product> productPage = productRepository.findByFilters(
-                category, minPrice, maxPrice, startDate, endDate, pageable);
-        return buildPageResponse(productPage);
-    }
 
     @Override
     public ProductResponse uploadImage(Long productId, Long variantId, List<MultipartFile> files) throws IOException {
@@ -110,6 +97,46 @@ public class ProductServiceImpl implements ProductService {
     }
 
 
+
+    @Override
+    public PageResponse<ProductResponse> getAllProducts(
+            String search,
+            String categorySlug,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            LocalDate startDate,
+            LocalDate endDate,
+            Pageable pageable) {
+
+        Page<Product> productPage = productRepository.findByFilters(
+                search, categorySlug, minPrice, maxPrice, startDate, endDate, pageable);
+
+        return buildPageResponse(productPage);
+    }
+
+    @Override
+    public ProductResponse getProductById(Long id) {
+        Product product = productRepository.findProductById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
+
+
+        return productMapper.toResponse(product);
+    }
+
+    @Override
+    public void deleteProduct(Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
+        // Delete all images from R2
+        product.getProductVariants().forEach(variant ->
+                variant.getImages().forEach(image ->
+                        r2StorageService.deleteFile(image.getImageKey())
+                )
+        );
+        productRepository.delete(product);
+    }
+
+
     private PageResponse<ProductResponse> buildPageResponse(Page<Product> productPage) {
         return PageResponse.<ProductResponse>builder()
                 .products(productPage.getContent().stream()
@@ -122,9 +149,6 @@ public class ProductServiceImpl implements ProductService {
                 .last(productPage.isLast())
                 .build();
     }
-
-
-
 
 
 
