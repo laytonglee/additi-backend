@@ -23,6 +23,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -61,10 +63,16 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public PageResponse<ProductResponse> getAllProducts(Pageable pageable) {
-        log.info("Fetching all products with pagination");
+    public PageResponse<ProductResponse> getAllProducts(
+            String category,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            LocalDate startDate,
+            LocalDate endDate,
+            Pageable pageable) {
 
-        Page<Product> productPage = productRepository.findAll(pageable);
+        Page<Product> productPage = productRepository.findByFilters(
+                category, minPrice, maxPrice, startDate, endDate, pageable);
         return buildPageResponse(productPage);
     }
 

@@ -1,5 +1,20 @@
 package groupproject.additibackend.controller;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import groupproject.additibackend.model.Order;
 import groupproject.additibackend.model.Payment;
 import groupproject.additibackend.model.User;
@@ -9,13 +24,6 @@ import groupproject.additibackend.response.OrderResponse;
 import groupproject.additibackend.response.PaymentResponse;
 import groupproject.additibackend.service.OrderService;
 import groupproject.additibackend.service.PaymentService;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -82,6 +90,19 @@ public class OrderController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+    /**
+     * Verify if KHQR payment has been completed.
+     * Frontend should poll this endpoint after displaying QR code.
+     */
+    @GetMapping("/{orderId}/payment/{paymentId}/verify")
+    public ResponseEntity<PaymentResponse> verifyPayment(
+            @PathVariable Long orderId,
+            @PathVariable Long paymentId) {
+        Payment payment = paymentService.verifyPayment(paymentId);
+        PaymentResponse response = convertToPaymentResponse(payment);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
     @PutMapping("/{orderId}/status")
     public ResponseEntity<OrderResponse> updateOrderStatus(
             @PathVariable Long orderId,
@@ -114,6 +135,7 @@ public class OrderController {
         response.setAmount(payment.getAmount());
         response.setTransactionId(payment.getTransactionId());
         response.setKhqrCode(payment.getKhqrCode());
+        response.setMd5Hash(payment.getMd5Hash());
         response.setCreatedAt(payment.getCreatedAt());
         response.setPaidAt(payment.getPaidAt());
         return response;

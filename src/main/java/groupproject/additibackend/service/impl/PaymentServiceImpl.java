@@ -55,13 +55,14 @@ public class PaymentServiceImpl implements groupproject.additibackend.service.Pa
                 .orElseThrow(() -> new RuntimeException("Order not found"));
 
         // Generate real KHQR code using Bakong API
-        String generatedKhqr = bakongService.generateKHQR(order);
+        BakongService.KHQRResult khqrResult = bakongService.generateKHQR(order);
         
         Payment payment = new Payment();
         payment.setOrder(order);
         payment.setAmount(order.getTotalAmount());
         payment.setMethod(Payment.PaymentMethod.KHQR);
-        payment.setKhqrCode(generatedKhqr); // Use the generated KHQR
+        payment.setKhqrCode(khqrResult.qr());
+        payment.setMd5Hash(khqrResult.md5Hash()); // Save MD5 hash for verification
         payment.setStatus(Payment.PaymentStatus.PENDING);
         payment.setTransactionId(generateTransactionId());
         payment.setCreatedAt(LocalDateTime.now());
@@ -102,9 +103,9 @@ public class PaymentServiceImpl implements groupproject.additibackend.service.Pa
     public Payment verifyPayment(Long paymentId) {
         Payment payment = getPaymentById(paymentId);
 
-        // For KHQR payments, verify with Bakong API
-        if (payment.getMethod() == Payment.PaymentMethod.KHQR && payment.getKhqrCode() != null) {
-            BakongService.PaymentStatusResponse status = bakongService.checkPaymentStatus(payment.getKhqrCode());
+        // For KHQR payments, verify with Bakong API using MD5 hash
+        if (payment.getMethod() == Payment.PaymentMethod.KHQR && payment.getMd5Hash() != null) {
+            BakongService.PaymentStatusResponse status = bakongService.checkPaymentStatus(payment.getMd5Hash());
             
             if (status.paid()) {
                 payment.setStatus(Payment.PaymentStatus.COMPLETED);
