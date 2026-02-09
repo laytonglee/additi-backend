@@ -10,7 +10,6 @@ public class UserViewResponse {
 
     private Long id;
     private String email;
-    private String firstName;
-    private String lastName;
+    private String username;
     private Set<String> role;
 }
