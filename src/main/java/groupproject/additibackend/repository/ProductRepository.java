@@ -19,9 +19,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @Query(
             value = """
-    SELECT p.*
+    SELECT DISTINCT p.*
     FROM products p
     JOIN categories c ON c.id = p.category_id
+    LEFT JOIN product_variants pv ON pv.product_id = p.id
     WHERE (
         :search IS NULL
         OR p.name ILIKE CONCAT('%', CAST(:search AS text), '%')
@@ -32,11 +33,14 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     AND (:maxPrice IS NULL OR p.price <= :maxPrice)
     AND (:startDate IS NULL OR CAST(p.created_at AS date) >= :startDate)
     AND (:endDate IS NULL OR CAST(p.created_at AS date) <= :endDate)
+    AND (:size IS NULL OR pv.size = :size)
+    AND (:color IS NULL OR pv.color = :color)
     """,
             countQuery = """
-    SELECT COUNT(*)
+    SELECT COUNT(DISTINCT p.id)
     FROM products p
     JOIN categories c ON c.id = p.category_id
+    LEFT JOIN product_variants pv ON pv.product_id = p.id
     WHERE (
         :search IS NULL
         OR p.name ILIKE CONCAT('%', CAST(:search AS text), '%')
@@ -47,6 +51,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     AND (:maxPrice IS NULL OR p.price <= :maxPrice)
     AND (:startDate IS NULL OR CAST(p.created_at AS date) >= :startDate)
     AND (:endDate IS NULL OR CAST(p.created_at AS date) <= :endDate)
+    AND (:size IS NULL OR pv.size = :size)
+    AND (:color IS NULL OR pv.color = :color)
     """,
             nativeQuery = true
     )
@@ -57,21 +63,23 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             @Param("maxPrice") BigDecimal maxPrice,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
+            @Param("size") String size,
+            @Param("color") String color,
             Pageable pageable
     );
 
-    @Query(value = """
-   SELECT p.id
-    FROM products p
-   WHERE p.category_id = (SELECT category_id FROM products WHERE id = :productId)
-    AND p.id <> :productId
-    AND p.is_active = true
-  ORDER BY p.created_at DESC
-  LIMIT :limit
-""", nativeQuery = true)
-    List<Long> findRelatedIdsByCategory(
+
+    @Query("""
+    select p from Product p
+    where p.isActive = true
+      and p.category.id = :categoryId
+      and p.id <> :productId
+    order by p.createdAt desc
+  """)
+    List<Product> findRelatedByCategory(
+            @Param("categoryId") Long categoryId,
             @Param("productId") Long productId,
-            @Param("limit") int limit
+            Pageable pageable
     );
 
 
