@@ -4,6 +4,7 @@ import groupproject.additibackend.request.RegisterRequest;
 import groupproject.additibackend.request.UpdateMeRequest;
 import groupproject.additibackend.response.MeResponse;
 import groupproject.additibackend.response.RegisterResponse;
+import groupproject.additibackend.response.UpdateMeResponse;
 import groupproject.additibackend.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -28,16 +29,20 @@ public class UserController {
 
     @PostMapping("/register")
     public RegisterResponse registerUser(
-            @ModelAttribute RegisterRequest request,      // binds text fields
-            @RequestPart(value = "photo", required = false) MultipartFile photo // binds file
+            @ModelAttribute RegisterRequest request,
+            @RequestPart(value = "photo", required = false) MultipartFile photo
     ) throws IOException {
         return userService.registerUser(request, photo);
     }
 
-
-    @PutMapping("/me")
-    public ResponseEntity<MeResponse> editUser(Authentication authentication,@RequestBody UpdateMeRequest request){
-        MeResponse response = userService.updateMe(authentication, request);
-        return new ResponseEntity<>(response, HttpStatus.OK);
+    @PutMapping(value = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public UpdateMeResponse updateMe(
+            Authentication authentication,
+            @ModelAttribute UpdateMeRequest request,
+            @RequestPart(value = "photo", required = false) MultipartFile photo
+    ) throws IOException {
+        return userService.updateMe(authentication, request, photo);
     }
+
+
 }
