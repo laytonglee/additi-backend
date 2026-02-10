@@ -1,27 +1,19 @@
 package groupproject.additibackend.request;
 
 
-import java.math.BigDecimal;
-import java.util.List;
-
-import jakarta.persistence.Column;
-import jakarta.validation.constraints.DecimalMax;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.Digits;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class ProductVariantRequest {
+public class ProductVariantUpdateRequest {
+
+    private Long id;
 
     @NotBlank(message = "Size is required")
     @Size(min = 1, max = 50, message = "Size must be between 1 and 50 characters")
