@@ -1,15 +1,15 @@
 package groupproject.additibackend.mapper;
 
+import java.time.LocalDateTime;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Component;
+
 import groupproject.additibackend.model.Category;
 import groupproject.additibackend.model.Product;
 import groupproject.additibackend.request.ProductCreateRequest;
 import groupproject.additibackend.response.ProductResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor

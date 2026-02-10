@@ -1,11 +1,11 @@
 package groupproject.additibackend.request;
 
+import org.springframework.web.multipart.MultipartFile;
+
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import lombok.*;
-import org.springframework.web.multipart.MultipartFile;
+import lombok.Data;
 
 @Data
 public class RegisterRequest {
