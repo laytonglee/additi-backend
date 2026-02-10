@@ -29,26 +29,6 @@ public class UserServiceImpl implements UserService {
         this.r2StorageService = r2StorageService;
     }
 
-//    @Override
-//    public RegisterResponse registerUser(RegisterRequest request) {
-//        User user = new User();
-//        user.setUsername(request.getUsername());
-//        user.setEmail(request.getEmail());
-//        user.setPhoneNumber(request.getPhoneNumber());
-//        user.setAddress(request.getAddress());
-//        user.setBio(request.getBio());
-//        user.setPassword(passwordEncoder.encode(request.getPassword()));
-//
-//        userRepository.save(user);
-//
-//        RegisterResponse response = new RegisterResponse();
-//        response.setUsername(user.getUsername());
-//        response.setEmail(user.getEmail());
-//        response.setMessage("Registered successfully");
-//
-//        return response;
-//    }
-
     @Override
     public RegisterResponse registerUser(RegisterRequest request, MultipartFile photo) throws IOException {
 
@@ -99,5 +79,4 @@ public class UserServiceImpl implements UserService {
 
         return MeResponse.from(user);
     }
-
 }

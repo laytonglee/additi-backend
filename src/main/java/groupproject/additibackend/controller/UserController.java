@@ -26,12 +26,6 @@ public class UserController {
         this.userService = userService;
     }
 
-//    @PostMapping("/register")
-//    public ResponseEntity<RegisterResponse> registerUser(@Validated @RequestBody RegisterRequest request) {
-//        RegisterResponse response = userService.registerUser(request);
-//        return new ResponseEntity<>(response, HttpStatus.CREATED);
-//    }
-
     @PostMapping("/register")
     public RegisterResponse registerUser(
             @ModelAttribute RegisterRequest request,      // binds text fields
@@ -39,7 +33,6 @@ public class UserController {
     ) throws IOException {
         return userService.registerUser(request, photo);
     }
-
 
 
     @PutMapping("/me")

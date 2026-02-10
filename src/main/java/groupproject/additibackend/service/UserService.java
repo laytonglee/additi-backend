@@ -10,7 +10,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 
 public interface UserService {
-//    RegisterResponse registerUser(RegisterRequest request);
     RegisterResponse registerUser(RegisterRequest request, MultipartFile photo) throws IOException;
     MeResponse updateMe(Authentication authentication, UpdateMeRequest request);
 }
