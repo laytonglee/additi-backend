@@ -1,5 +1,6 @@
 package groupproject.additibackend.service.impl;
 
+import groupproject.additibackend.config.JwtProperties;
 import groupproject.additibackend.model.RefreshToken;
 import groupproject.additibackend.model.User;
 import groupproject.additibackend.repository.RefreshTokenRepository;
@@ -7,20 +8,20 @@ import groupproject.additibackend.repository.UserRepository;
 import groupproject.additibackend.request.AuthLoginRequest;
 import groupproject.additibackend.response.AuthResponse;
 import groupproject.additibackend.response.MeResponse;
-import groupproject.additibackend.response.UserViewResponse;
 import groupproject.additibackend.service.AuthService;
 import groupproject.additibackend.service.JwtService;
 import groupproject.additibackend.service.RefreshTokenService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
-import org.jspecify.annotations.NonNull;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Service;
-
 import java.time.Instant;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -30,66 +31,74 @@ public class AuthServiceImpl implements AuthService {
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final UserDetailsService userDetailsService;
+    private final JwtProperties jwtProperties;
 
-    public AuthServiceImpl(AuthenticationManager authenticationManager, UserRepository userRepository, JwtService jwtService, RefreshTokenService refreshTokenService, RefreshTokenRepository refreshTokenRepository) {
+    public AuthServiceImpl(AuthenticationManager authenticationManager, UserRepository userRepository, JwtService jwtService, RefreshTokenService refreshTokenService, RefreshTokenRepository refreshTokenRepository, UserDetailsService userDetailsService, JwtProperties jwtProperties) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.jwtService = jwtService;
         this.refreshTokenService = refreshTokenService;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.userDetailsService = userDetailsService;
+        this.jwtProperties = jwtProperties;
     }
 
     @Override
-    public AuthResponse login(@NonNull AuthLoginRequest request) {
+    public AuthResponse login(AuthLoginRequest request,
+                              HttpServletResponse response) {
 
-        // 1️ Authenticate credentials
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.getUsername(),
                         request.getPassword()
                 )
         );
-        // 2 Load user safely
+
         User user = userRepository.findByEmail(request.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // 3️ Generate ACCESS token only
         String accessToken = jwtService.generateAccessToken(user);
-        String getRefreshToken = jwtService.getRefreshToken(user);
+        String refreshToken = jwtService.getRefreshToken(user);
 
-        RefreshToken refreshTokenEntity = new RefreshToken();
-        refreshTokenEntity.setToken(getRefreshToken);
-        refreshTokenEntity.setUser(user);
-        refreshTokenEntity.setExpiresAt(Instant.now().plusSeconds(3600)); // or Instant.now().plusSeconds(x)
-        refreshTokenRepository.save(refreshTokenEntity);
+        RefreshToken tokenEntity = new RefreshToken();
+        tokenEntity.setToken(refreshToken);
+        tokenEntity.setUser(user);
+        tokenEntity.setRevoked(false);
+        tokenEntity.setExpiresAt(Instant.now().plusMillis(jwtProperties.getRefreshExpiration()));
 
-        // 4️ Build response
+        refreshTokenRepository.save(tokenEntity);
+
+
+        Cookie accessCookie = new Cookie("accessToken", accessToken);
+        accessCookie.setHttpOnly(true);
+        accessCookie.setSecure(false); // true in production (HTTPS)
+        accessCookie.setPath("/");
+        accessCookie.setMaxAge((int) (jwtProperties.getExpiration() / 1000)); // 10 minute
+
+        Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
+        refreshCookie.setHttpOnly(true);
+        refreshCookie.setSecure(false); // true in production
+        refreshCookie.setPath("/");
+        refreshCookie.setMaxAge((int) (jwtProperties.getRefreshExpiration() / 1000)); // 60 minutes
+
+        response.addCookie(accessCookie);
+        response.addCookie(refreshCookie);
+
         AuthResponse authResponse = new AuthResponse();
-        authResponse.setAccessToken(accessToken);
-        authResponse.setRefreshToken(getRefreshToken);
         authResponse.setType("Bearer");
 
-
-        // 5️ User view
-        UserViewResponse userView = new UserViewResponse();
-        userView.setId(user.getId());
-        userView.setEmail(user.getEmail());
-        userView.setUsername(user.getRealUsername());
-        userView.setRole(
-                user.getRoles()
-                        .stream()
-                        .map(role -> role.getName())
-                        .collect(Collectors.toSet())
-        );
-
-        authResponse.setUser(userView);
         return authResponse;
     }
+
 
     @Override
     public MeResponse me(Authentication authentication) {
 
-        // Because getUsername() returns email
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new RuntimeException("User not authenticated");
+        }
+
         String email = authentication.getName();
 
         User user = userRepository.findByEmail(email)
@@ -106,6 +115,7 @@ public class AuthServiceImpl implements AuthService {
         return res;
     }
 
+
     @Override
     public void logout(String refreshToken, HttpServletResponse response) {
 
@@ -120,5 +130,40 @@ public class AuthServiceImpl implements AuthService {
         cookie.setMaxAge(0); // 🔥 DELETE cookie
         response.addCookie(cookie);
     }
+
+    @Override
+    public ResponseEntity<?> refresh(
+            String refreshToken,
+            HttpServletResponse response
+    ) {
+
+        if (refreshToken == null ||
+                !jwtService.validateRefreshToken(refreshToken)) {
+
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Invalid refresh token"));
+        }
+
+        String username = jwtService.extractUserName(refreshToken);
+
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String newAccessToken = jwtService.generateAccessToken(user);
+
+        // ✅ IMPORTANT: Update access cookie
+        Cookie accessCookie = new Cookie("accessToken", newAccessToken);
+        accessCookie.setHttpOnly(true);
+        accessCookie.setSecure(false); // true in production
+        accessCookie.setPath("/");
+        accessCookie.setMaxAge((int) (jwtProperties.getRefreshExpiration() / 1000));
+
+        response.addCookie(accessCookie);
+
+        return ResponseEntity.ok(Map.of("message", "Token refreshed"));
+    }
+
+
+
 
 }

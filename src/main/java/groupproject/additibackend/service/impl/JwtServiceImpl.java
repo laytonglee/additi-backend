@@ -1,8 +1,10 @@
 package groupproject.additibackend.service.impl;
 
 import groupproject.additibackend.config.JwtProperties;
+import groupproject.additibackend.model.RefreshToken;
 import groupproject.additibackend.model.Role;
 import groupproject.additibackend.model.User;
+import groupproject.additibackend.repository.RefreshTokenRepository;
 import groupproject.additibackend.service.JwtService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -23,6 +25,7 @@ import java.util.function.Function;
 public class JwtServiceImpl implements JwtService {
 
     private final JwtProperties jwtProperties;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     private SecretKey getSigninKey() {
         return Keys.hmacShaKeyFor("aIePkZH6PEwX2GloR9Lquafw0F7GQyts4GzglUPZXWKMNBJ1ZkZOZN5nDmugNPPXRU9bl0BnrrQ+AoMZ3h0yQA==".getBytes());
@@ -81,11 +84,49 @@ public class JwtServiceImpl implements JwtService {
     public String getRefreshToken(User user) {
         return Jwts.builder()
                 .setSubject(user.getUsername())
-                .setClaims(new HashMap<>())
+//                .setClaims(new HashMap<>())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis()
                         + jwtProperties.getRefreshExpiration()))
                 .signWith(getSigninKey())
                 .compact();
     }
+
+    @Override
+    public boolean validateRefreshToken(String refreshToken) {
+        try {
+            // 1️⃣ Verify signature + structure
+            String username = extractUserName(refreshToken);
+
+            // 2️⃣ Check expiration
+            if (isTokenExpired(refreshToken)) {
+                return false;
+            }
+
+            // 3️⃣ Check token exists in DB
+            RefreshToken storedToken = refreshTokenRepository
+                    .findByToken(refreshToken)
+                    .orElse(null);
+
+            if (storedToken == null) {
+                return false;
+            }
+
+            // 4️⃣ Check not revoked
+            if (storedToken.isRevoked()) {
+                return false;
+            }
+
+            // 5️⃣ Check username matches
+            if (!storedToken.getUser().getEmail().equals(username)) {
+                return false;
+            }
+
+            return true;
+
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
 }

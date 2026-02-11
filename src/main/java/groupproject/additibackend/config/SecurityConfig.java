@@ -1,5 +1,6 @@
 package groupproject.additibackend.config;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -49,9 +50,12 @@ public class SecurityConfig {
                 .requestMatchers("/error").permitAll()
                 .requestMatchers("/api/auth/login").permitAll()
                 .requestMatchers("/api/products/**").permitAll()
+                        .requestMatchers("/api/auth/logout").permitAll()
                 .requestMatchers("/api/categories/**").permitAll()
-                // permit auth endpoints
-                .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/auth/refresh").permitAll()
+
+                        // permit auth endpoints
+//                .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/users/register").permitAll()
                 // keep these protected
                 .requestMatchers("/api/auth/me").authenticated()
@@ -64,6 +68,14 @@ public class SecurityConfig {
 
 
         http.sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+
+        http.exceptionHandling(exception ->
+                exception.authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"message\":\"Unauthorized\"}");
+                })
+        );
 
         // ✅ IMPORTANT: enable JWT auth
         http.addFilterBefore(jwtFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
