@@ -3,6 +3,8 @@ package groupproject.additibackend.service.impl;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +17,8 @@ import groupproject.additibackend.service.BakongService;
 
 @Service
 public class PaymentServiceImpl implements groupproject.additibackend.service.PaymentService {
+
+    private static final Logger log = LoggerFactory.getLogger(PaymentServiceImpl.class);
 
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
@@ -102,10 +106,15 @@ public class PaymentServiceImpl implements groupproject.additibackend.service.Pa
     @Transactional
     public Payment verifyPayment(Long paymentId) {
         Payment payment = getPaymentById(paymentId);
+        
+        log.info("Verifying payment: id={}, method={}, md5Hash={}", 
+            paymentId, payment.getMethod(), payment.getMd5Hash());
 
         // For KHQR payments, verify with Bakong API using MD5 hash
         if (payment.getMethod() == Payment.PaymentMethod.KHQR && payment.getMd5Hash() != null) {
             BakongService.PaymentStatusResponse status = bakongService.checkPaymentStatus(payment.getMd5Hash());
+            
+            log.info("Payment verification result: paid={}", status.paid());
             
             if (status.paid()) {
                 payment.setStatus(Payment.PaymentStatus.COMPLETED);
@@ -118,9 +127,11 @@ public class PaymentServiceImpl implements groupproject.additibackend.service.Pa
                 order.setStatus(Order.OrderStatus.CONFIRMED);
                 orderRepository.save(order);
                 
+                log.info("Payment {} completed successfully!", paymentId);
                 return updatedPayment;
             } else {
                 // Payment not yet received
+                log.info("Payment {} still pending", paymentId);
                 return payment;
             }
         }

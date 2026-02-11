@@ -3,6 +3,7 @@ package groupproject.additibackend.khqr;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Locale;
 
 /**
  * BakongKHQR - KHQR Generator compatible with NBC Bakong SDK
@@ -32,36 +33,43 @@ public class BakongKHQR {
     private static String buildQRString(IndividualInfo info) {
         StringBuilder qr = new StringBuilder();
         
-        // Payload Format Indicator (ID 00)
+        // Payload Format Indicator (ID 00) - Required
         qr.append("000201");
         
-        // Point of Initiation Method (ID 01) - 12 = Dynamic QR
+        // Point of Initiation Method (ID 01) - 12 = Dynamic QR (one-time use)
         qr.append("010212");
         
-        // Merchant Account Information (ID 29 for Bakong)
+        // Merchant Account Information (ID 29 for Individual)
         String merchantAccountInfo = buildMerchantAccountInfo(info);
         qr.append("29").append(formatLength(merchantAccountInfo.length())).append(merchantAccountInfo);
         
-        // Merchant Category Code (ID 52)
+        // Merchant Category Code (ID 52) - 5999 = Miscellaneous
         qr.append("52045999");
         
-        // Transaction Currency (ID 53)
+        // Transaction Currency (ID 53) - Required
         qr.append("5303").append(info.getCurrency().getCode());
         
         // Transaction Amount (ID 54)
         if (info.getAmount() != null && info.getAmount() > 0) {
-            String amount = String.format("%.2f", info.getAmount());
+            // Format amount - MUST use Locale.US to ensure decimal point (.) not comma (,)
+            String amount = String.format(Locale.US, "%.0f", info.getAmount());
+            if (info.getAmount() != Math.floor(info.getAmount())) {
+                amount = String.format(Locale.US, "%.2f", info.getAmount());
+            }
             qr.append("54").append(formatLength(amount.length())).append(amount);
         }
         
-        // Country Code (ID 58)
+        // Country Code (ID 58) - Required
         qr.append("5802KH");
         
-        // Merchant Name (ID 59)
+        // Merchant Name (ID 59) - Required
         String merchantName = info.getMerchantName() != null ? info.getMerchantName() : "Merchant";
+        if (merchantName.length() > 25) {
+            merchantName = merchantName.substring(0, 25);
+        }
         qr.append("59").append(formatLength(merchantName.length())).append(merchantName);
         
-        // Merchant City (ID 60)
+        // Merchant City (ID 60) - Required
         String city = info.getMerchantCity() != null ? info.getMerchantCity() : "PHNOM PENH";
         qr.append("60").append(formatLength(city.length())).append(city);
         
@@ -71,12 +79,26 @@ public class BakongKHQR {
             qr.append("62").append(formatLength(additionalData.length())).append(additionalData);
         }
         
-        // CRC (ID 63) - placeholder for calculation
+        // Timestamp (ID 99)
+        String timestamp = String.valueOf(System.currentTimeMillis());
+        String timestampField = "00" + formatLength(timestamp.length()) + timestamp;
+        qr.append("99").append(formatLength(timestampField.length())).append(timestampField);
+        
+        // CRC (ID 63) - Required, placeholder
         qr.append("6304");
         
-        // Calculate and append CRC16
+        // Calculate and append CRC16-CCITT
         String crc = calculateCRC16(qr.toString());
         qr.append(crc);
+        
+        // Debug output
+        System.out.println("=== KHQR Generated ===");
+        System.out.println("Account: " + info.getBakongAccountId());
+        System.out.println("Amount: " + info.getAmount() + " " + info.getCurrency());
+        System.out.println("Merchant: " + merchantName);
+        System.out.println("QR String: " + qr.toString());
+        System.out.println("QR Length: " + qr.length());
+        System.out.println("=====================");
         
         return qr.toString();
     }
@@ -84,26 +106,21 @@ public class BakongKHQR {
     private static String buildMerchantAccountInfo(IndividualInfo info) {
         StringBuilder mai = new StringBuilder();
         
-        // Bakong Account ID
+        // According to Bakong KHQR SDK documentation:
+        // Tag 00 - Bakong Account ID (e.g., "john_smith@devb")
         String accountId = info.getBakongAccountId();
         if (accountId != null && !accountId.isEmpty()) {
-            // Extract bank code from account (e.g., "john@devb" -> "DEVB")
-            String bankCode = "BAKONG";
-            if (accountId.contains("@")) {
-                bankCode = accountId.substring(accountId.indexOf("@") + 1).toUpperCase();
-            }
-            
-            // Tag 00 - Globally Unique Identifier
-            String guid = "kh.gov.nbc.bakong";
-            mai.append("00").append(formatLength(guid.length())).append(guid);
-            
-            // Tag 01 - Bakong Account ID
-            mai.append("01").append(formatLength(accountId.length())).append(accountId);
-            
-            // Tag 02 - Acquiring Bank (optional)
-            if (info.getAcquiringBank() != null && !info.getAcquiringBank().isEmpty()) {
-                mai.append("02").append(formatLength(info.getAcquiringBank().length())).append(info.getAcquiringBank());
-            }
+            mai.append("00").append(formatLength(accountId.length())).append(accountId);
+        }
+        
+        // Tag 01 - Account Information (phone number)
+        if (info.getAccountInformation() != null && !info.getAccountInformation().isEmpty()) {
+            mai.append("01").append(formatLength(info.getAccountInformation().length())).append(info.getAccountInformation());
+        }
+        
+        // Tag 02 - Acquiring Bank
+        if (info.getAcquiringBank() != null && !info.getAcquiringBank().isEmpty()) {
+            mai.append("02").append(formatLength(info.getAcquiringBank().length())).append(info.getAcquiringBank());
         }
         
         return mai.toString();
