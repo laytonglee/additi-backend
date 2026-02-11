@@ -121,8 +121,24 @@ public class OrderController {
         response.setPhoneNumber(order.getPhoneNumber());
         response.setCreatedAt(order.getCreatedAt());
         response.setUpdatedAt(order.getUpdatedAt());
+        
         // Convert order items to response DTOs
-        // This is a simplified version - you may need to enhance this
+        if (order.getOrderItems() != null) {
+            response.setItems(order.getOrderItems().stream().map(item -> {
+                OrderResponse.OrderItemResponse itemResponse = new OrderResponse.OrderItemResponse();
+                itemResponse.setId(item.getId());
+                itemResponse.setProductId(item.getProduct().getId());
+                itemResponse.setProductName(item.getProduct().getName());
+                if (item.getProductVariant() != null) {
+                    itemResponse.setProductVariantId(item.getProductVariant().getId());
+                }
+                itemResponse.setQuantity(item.getQuantity());
+                itemResponse.setPrice(item.getPrice());
+                itemResponse.setSubtotal(item.getSubtotal());
+                return itemResponse;
+            }).collect(Collectors.toList()));
+        }
+        
         return response;
     }
 
@@ -141,3 +157,4 @@ public class OrderController {
         return response;
     }
 }
+

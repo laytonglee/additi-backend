@@ -1,6 +1,5 @@
 package groupproject.additibackend.request;
 
-import jakarta.persistence.Column;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
@@ -15,7 +14,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ProductCreateRequest {
+public class ProductUpdateRequest {
 
     @NotBlank(message = "Product name is required")
     @Size(min = 2, max = 255, message = "Product name must be between 2 and 255 characters")
@@ -38,6 +37,6 @@ public class ProductCreateRequest {
 
     @Valid
     @NotEmpty(message = "Product must have at least one variant")
-    private List<ProductVariantRequest> variants;
+    private List<ProductVariantUpdateRequest> variants;
 
 }

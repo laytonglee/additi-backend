@@ -1,34 +1,22 @@
 package groupproject.additibackend.request;
 
-import org.springframework.web.multipart.MultipartFile;
-
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import lombok.Data;
+import org.jspecify.annotations.Nullable;
 
 @Data
-public class RegisterRequest {
-
-    @NotBlank
+public class UpdateMeRequest {
     private String username;
 
+    @Nullable
     @Email
-    @NotBlank
     private String email;
 
     private String phoneNumber;
-
     private String address;
-
     private String bio;
 
-    private MultipartFile photo;
-
-    @NotBlank
-    @Size(min=6)
     private String password;
-
-    @NotBlank
     private String confirmPassword;
 }
+

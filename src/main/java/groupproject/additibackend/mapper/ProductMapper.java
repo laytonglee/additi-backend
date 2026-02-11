@@ -1,14 +1,16 @@
 package groupproject.additibackend.mapper;
 
+import java.time.LocalDateTime;
+import java.util.stream.Collectors;
+
+import groupproject.additibackend.model.User;
+import org.springframework.stereotype.Component;
+
 import groupproject.additibackend.model.Category;
 import groupproject.additibackend.model.Product;
 import groupproject.additibackend.request.ProductCreateRequest;
 import groupproject.additibackend.response.ProductResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-
-import java.time.LocalDateTime;
-import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -41,7 +43,7 @@ public class ProductMapper {
     }
 
     public ProductResponse toResponse(Product product) {
-        return ProductResponse.builder()
+        ProductResponse res = ProductResponse.builder()
                 .id(product.getId())
                 .name(product.getName())
                 .description(product.getDescription())
@@ -55,6 +57,19 @@ public class ProductMapper {
                         .map(productVariantMapper::toResponse)
                         .collect(Collectors.toList()))
                 .build();
+
+        if (product.getCreatedBy() != null) {
+            User u = product.getCreatedBy();
+            res.setCreatedById(u.getId());
+            res.setCreatedByEmail(u.getEmail());
+            res.setCreatedByUsername(u.getRealUsername());
+            res.setCreatedByPhoto(u.getPhoto());
+        }
+
+        return res;
     }
+
+
+
 
 }

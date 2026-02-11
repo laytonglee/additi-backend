@@ -1,39 +1,128 @@
 package groupproject.additibackend.controller;
 
-import groupproject.additibackend.model.Product;
-import groupproject.additibackend.repository.ProductRepository;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import groupproject.additibackend.request.ProductUpdateRequest;
+import groupproject.additibackend.request.ProductVariantRequest;
+import groupproject.additibackend.response.ProductDetailResponse;
+import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
 import groupproject.additibackend.request.ProductCreateRequest;
 import groupproject.additibackend.response.ApiResponse;
 import groupproject.additibackend.response.PageResponse;
 import groupproject.additibackend.response.ProductResponse;
 import groupproject.additibackend.service.ProductService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.io.IOException;
-import java.util.List;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 @RestController
 @RequestMapping("/api/products")
 @RequiredArgsConstructor
+@Slf4j
 public class ProductController {
       private final ProductService productService;
+      private final ObjectMapper objectMapper;
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<ProductResponse>> createProduct(
-            @Valid @RequestBody ProductCreateRequest request) {
+            @RequestPart("product") String productJson,  // Accept as String
+            @RequestPart(value = "variant_0_images", required = false) List<MultipartFile> variant0Images,
+            @RequestPart(value = "variant_1_images", required = false) List<MultipartFile> variant1Images,
+            @RequestPart(value = "variant_2_images", required = false) List<MultipartFile> variant2Images,
+            @RequestPart(value = "variant_3_images", required = false) List<MultipartFile> variant3Images,
+            @RequestPart(value = "variant_4_images", required = false) List<MultipartFile> variant4Images
+    ) throws IOException {
 
-        ProductResponse response = productService.createProduct(request);
+        log.info("Received product JSON: {}", productJson);
+
+        // Parse JSON string to ProductCreateRequest
+        ProductCreateRequest request = objectMapper.readValue(productJson, ProductCreateRequest.class);
+
+        log.info("Parsed product request: {}", request.getName());
+
+        // Collect variant images
+        Map<Integer, List<MultipartFile>> variantImages = new HashMap<>();
+        if (variant0Images != null && !variant0Images.isEmpty()) {
+            variantImages.put(0, variant0Images);
+            log.info("Variant 0: {} images", variant0Images.size());
+        }
+        if (variant1Images != null && !variant1Images.isEmpty()) {
+            variantImages.put(1, variant1Images);
+            log.info("Variant 1: {} images", variant1Images.size());
+        }
+        if (variant2Images != null && !variant2Images.isEmpty()) {
+            variantImages.put(2, variant2Images);
+            log.info("Variant 2: {} images", variant2Images.size());
+        }
+        if (variant3Images != null && !variant3Images.isEmpty()) {
+            variantImages.put(3, variant3Images);
+            log.info("Variant 3: {} images", variant3Images.size());
+        }
+        if (variant4Images != null && !variant4Images.isEmpty()) {
+            variantImages.put(4, variant4Images);
+            log.info("Variant 4: {} images", variant4Images.size());
+        }
+
+        ProductResponse response = productService.createProduct(request, variantImages);
+
+        log.info("Product created successfully with id: {}", response.getId());
+
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Product created successfully"));
+    }
+
+    @PutMapping(value = "/{productId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<ProductResponse>> updateProductWithImages(
+            @PathVariable Long productId,
+            @RequestPart("product") String productJson,
+            @RequestPart(value = "variant_0_images", required = false) List<MultipartFile> variant0Images,
+            @RequestPart(value = "variant_1_images", required = false) List<MultipartFile> variant1Images,
+            @RequestPart(value = "variant_2_images", required = false) List<MultipartFile> variant2Images,
+            @RequestPart(value = "variant_3_images", required = false) List<MultipartFile> variant3Images
+    ) throws IOException {
+
+        log.info("Updating product {} with images", productId);
+
+        // Parse JSON
+        ProductUpdateRequest request = objectMapper.readValue(productJson, ProductUpdateRequest.class);
+
+        // Collect images
+        Map<Integer, List<MultipartFile>> variantImages = new HashMap<>();
+        if (variant0Images != null && !variant0Images.isEmpty()) {
+            variantImages.put(0, variant0Images);
+        }
+        if (variant1Images != null && !variant1Images.isEmpty()) {
+            variantImages.put(1, variant1Images);
+        }
+        if (variant2Images != null && !variant2Images.isEmpty()) {
+            variantImages.put(2, variant2Images);
+        }
+        if (variant3Images != null && !variant3Images.isEmpty()) {
+            variantImages.put(3, variant3Images);
+        }
+
+        ProductResponse response = productService.updateProductWithImages(
+                productId, request, variantImages);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(response, "Product updated successfully"));
     }
 
     @GetMapping
@@ -41,38 +130,52 @@ public class ProductController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sortBy,
-            @RequestParam(defaultValue = "DESC") String direction) {
+            @RequestParam(defaultValue = "DESC") String direction,
 
-        Sort sort = direction.equalsIgnoreCase("ASC") ?
-                Sort.by(sortBy).ascending() :
-                Sort.by(sortBy).descending();
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String categorySlug,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+
+            @RequestParam(required = false) String sizeValue,
+            @RequestParam(required = false) String color,
+            @RequestParam(required = false) Long categoryId,
+
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+    ) {
+        Sort sort = direction.equalsIgnoreCase("ASC")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
 
         Pageable pageable = PageRequest.of(page, size, sort);
-        PageResponse<ProductResponse> response = productService.getAllProducts(pageable);
+
+        PageResponse<ProductResponse> response = productService.getAllProducts(
+                search,
+                categorySlug,
+                minPrice,
+                maxPrice,
+                startDate,
+                endDate,
+                sizeValue,
+                color,
+                categoryId,
+                pageable
+        );
 
         return ResponseEntity.ok(ApiResponse.success(response, "Products retrieved successfully"));
     }
 
-    @PostMapping("/{productId}/variants/{variantId}/images")
-    public ResponseEntity<ApiResponse<ProductResponse>> uploadVariantImages(
-            @PathVariable Long productId,
-            @PathVariable Long variantId,
-            @RequestParam("files") List<MultipartFile> files) throws IOException {
-
-        ProductResponse response = productService.uploadImage(productId, variantId, files);
-        return ResponseEntity.ok(ApiResponse.success(response, "Images uploaded successfully"));
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<ProductDetailResponse>> getById(@PathVariable Long id) {
+        ProductDetailResponse data = productService.getProductById(id);
+        return ResponseEntity.ok(ApiResponse.success(data, "Product retrieved successfully"));
     }
 
-//    @DeleteMapping("/{productId}/variants/{variantId}/images/{imageId}")
-//    public ResponseEntity<ApiResponse<Void>> deleteVariantImage(
-//            @PathVariable Long productId,
-//            @PathVariable Long variantId,
-//            @PathVariable Long imageId) {
-//
-//        productService.deleteVariantImage(productId, variantId, imageId);
-//        return ResponseEntity.ok(ApiResponse.success(null, "Image deleted successfully"));
-//    }
-
-
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteProduct(@PathVariable Long id) {
+        productService.deleteProduct(id);
+        return ResponseEntity.ok(ApiResponse.success(null, "Product deleted successfully"));
+    }
 
 }
