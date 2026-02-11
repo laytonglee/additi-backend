@@ -1,6 +1,7 @@
 package groupproject.additibackend.service.impl;
 
 import groupproject.additibackend.config.JwtProperties;
+import groupproject.additibackend.model.Role;
 import groupproject.additibackend.model.User;
 import groupproject.additibackend.service.JwtService;
 import io.jsonwebtoken.Claims;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -38,16 +40,20 @@ public class JwtServiceImpl implements JwtService {
     public String generateAccessToken(User user) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("uid", user.getId());
-//        claims.put("role", user.getRoles());
-
+        List<String> roles = user.getRoles()
+                .stream()
+                .map(Role::getName)   // assuming getName() returns "USER"
+                .toList();
+        claims.put("roles", roles);
         return Jwts.builder()
                 .setSubject(user.getUsername())
                 .addClaims(claims)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + jwtProperties.getExpiration())) // 10 hours
-                . signWith(getSigninKey())
+                .setExpiration(new Date(System.currentTimeMillis() + jwtProperties.getExpiration()))
+                .signWith(getSigninKey())
                 .compact();
     }
+
 
     @Override
     public String extractUserName(String token) {

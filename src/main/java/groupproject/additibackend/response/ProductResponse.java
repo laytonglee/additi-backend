@@ -24,3 +24,4 @@ public class ProductResponse {
     private CategoryResponse category;
     private List<ProductVariantResponse> variants;
 }
+

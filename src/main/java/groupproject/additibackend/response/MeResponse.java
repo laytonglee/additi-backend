@@ -25,6 +25,9 @@ public class MeResponse {
     @Nullable
     private String address;
 
+    @Nullable
+    private String bio;
+
 
     public static MeResponse from(User user) {
         return new MeResponse(
@@ -32,7 +35,8 @@ public class MeResponse {
                 user.getEmail(),
                 user.getPhoto(),
                 user.getPhoneNumber(),
-                user.getAddress()
+                user.getAddress(),
+                user.getBio()
         );
     }
 }

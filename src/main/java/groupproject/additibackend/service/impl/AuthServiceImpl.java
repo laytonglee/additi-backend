@@ -100,6 +100,7 @@ public class AuthServiceImpl implements AuthService {
         res.setUsername(user.getRealUsername());
         res.setPhoto(user.getPhoto());
         res.setAddress(user.getAddress());
+        res.setBio(user.getBio());
         res.setPhoneNumber(user.getPhoneNumber());
 
         return res;
