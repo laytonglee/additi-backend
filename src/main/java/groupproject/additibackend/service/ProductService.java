@@ -61,5 +61,6 @@ public interface ProductService {
             LocalDate endDate,
             String size,
             String color,
+            Long createdById,
             Pageable pageable);
 }

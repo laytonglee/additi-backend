@@ -21,6 +21,11 @@ public class CategoryResponse {
     private Boolean isActive;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private Integer productCount;
+    private Long createdById;
+    private String createdByEmail;
+    private String createdByUsername;
+    private String createdByPhoto;
+    private long productCount;
 
 }
+

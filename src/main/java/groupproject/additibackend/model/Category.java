@@ -19,7 +19,8 @@ import java.util.List;
 @Getter
 @Entity
 @Table(name="categories",indexes = {
-        @Index(name="idx_category_slug",columnList = "slug")
+        @Index(name="idx_category_slug",columnList = "slug"),
+        @Index(name="idx_category_created_by", columnList="created_by_user_id")
 })
 public class Category {
 
@@ -51,6 +52,11 @@ public class Category {
 
     @Column(updatable = false)
     private LocalDateTime updatedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_user_id")
+    private User createdBy;
+
 
     @OneToMany(mappedBy = "category",cascade = CascadeType.ALL)
     private List<Product> products = new ArrayList<>();

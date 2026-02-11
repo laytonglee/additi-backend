@@ -1,15 +1,14 @@
 package groupproject.additibackend.service.impl;
 
+import groupproject.additibackend.exception.BusinessValidationException;
 import groupproject.additibackend.exception.ResourceNotFoundException;
 import groupproject.additibackend.mapper.ProductMapper;
 import groupproject.additibackend.mapper.ProductVariantMapper;
-import groupproject.additibackend.model.Category;
-import groupproject.additibackend.model.Product;
-import groupproject.additibackend.model.ProductImage;
-import groupproject.additibackend.model.ProductVariant;
+import groupproject.additibackend.model.*;
 import groupproject.additibackend.repository.CategoryRepository;
 import groupproject.additibackend.repository.ProductRepository;
 import groupproject.additibackend.repository.ProductVariantRepository;
+import groupproject.additibackend.repository.UserRepository;
 import groupproject.additibackend.request.ProductCreateRequest;
 import groupproject.additibackend.request.ProductUpdateRequest;
 import groupproject.additibackend.request.ProductVariantUpdateRequest;
@@ -25,6 +24,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -44,6 +44,7 @@ public class ProductServiceImpl implements ProductService {
     private  final ProductVariantRepository productVariantRepository;
     private  final ProductMapper productMapper;
     private final R2StorageService r2StorageService;
+    private final UserRepository userRepository;
 
 
     @Override
@@ -54,6 +55,11 @@ public class ProductServiceImpl implements ProductService {
 
         log.info("Creating product: {}", request.getName());
 
+        // ✅ 0) Get current user (createdBy)
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User currentUser = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
+
         // 1. Validate category
         Category category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -63,6 +69,7 @@ public class ProductServiceImpl implements ProductService {
         Product product = productMapper.toProductEntity(request, category);
         product.setCreatedAt(LocalDateTime.now());
         product.setUpdatedAt(LocalDateTime.now());
+        product.setCreatedBy(currentUser);
 
         // 3. Set up variants
         product.getProductVariants().forEach(variant -> {
@@ -110,6 +117,9 @@ public class ProductServiceImpl implements ProductService {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Product not found with id: " + productId));
+
+        // Vilidate sku
+        validateProductUpdate(product, request);
 
         // 2. Update basic fields
         product.setName(request.getName());
@@ -220,9 +230,12 @@ public class ProductServiceImpl implements ProductService {
         return productMapper.toResponse(product);
     }
 
-    // Helper method to update variants
+
+    /**
+     * Enhanced variant update with better tracking and cleanup
+     */
     private void updateProductVariants(Product product, List<ProductVariantUpdateRequest> variantRequests) {
-        log.info("Updating variants for product: {}", product.getId());
+        log.info("Updating {} variants for product: {}", variantRequests.size(), product.getId());
 
         // Collect requested variant IDs
         Set<Long> requestedVariantIds = variantRequests.stream()
@@ -230,54 +243,106 @@ public class ProductServiceImpl implements ProductService {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
-        // Get current variants
+        // Current variants
         List<ProductVariant> currentVariants = new ArrayList<>(product.getProductVariants());
+        List<ProductVariant> variantsToDelete = new ArrayList<>();
 
-        // Delete variants not in the request
-        Iterator<ProductVariant> iterator = currentVariants.iterator();
-        while (iterator.hasNext()) {
-            ProductVariant variant = iterator.next();
+        // Identify variants to delete
+        for (ProductVariant variant : currentVariants) {
             if (!requestedVariantIds.contains(variant.getId())) {
-                log.info("Deleting variant: {}", variant.getId());
-
-                // Delete associated images from storage
-                variant.getImages().forEach(image -> {
-                    try {
-                        r2StorageService.deleteFile(image.getImageKey());
-                    } catch (Exception e) {
-                        log.error("Failed to delete image: {}", image.getImageKey(), e);
-                    }
-                });
-
-                iterator.remove();
-                product.getProductVariants().remove(variant);
-                productVariantRepository.delete(variant);
+                variantsToDelete.add(variant);
             }
         }
 
-        // Update existing variants or add new ones
+        // Delete removed variants and their images
+        deleteVariantsWithImages(product, variantsToDelete);
+
+        // Update existing or create new variants
         for (ProductVariantUpdateRequest variantRequest : variantRequests) {
             if (variantRequest.getId() != null) {
-                // Update existing variant
-                ProductVariant existingVariant = product.getProductVariants().stream()
-                        .filter(v -> v.getId().equals(variantRequest.getId()))
-                        .findFirst()
-                        .orElseThrow(() -> new ResourceNotFoundException(
-                                "Variant not found with id: " + variantRequest.getId()));
-
-                log.info("Updating existing variant: {}", existingVariant.getId());
-                updateVariantFields(existingVariant, variantRequest);
-
+                updateExistingVariant(product, variantRequest);
             } else {
-                // Add new variant
-                log.info("Adding new variant with SKU: {}", variantRequest.getSku());
-                ProductVariant newVariant = new ProductVariant();
-                updateVariantFields(newVariant, variantRequest);
-                newVariant.setProduct(product);
-                newVariant.setCreatedAt(LocalDateTime.now());
-                product.addVariant(newVariant);
+                addNewVariant(product, variantRequest);
             }
         }
+    }
+
+    /**
+     * Deletes variants and cleans up their images from storage
+     */
+    private void deleteVariantsWithImages(Product product, List<ProductVariant> variantsToDelete) {
+        for (ProductVariant variant : variantsToDelete) {
+            log.info("Deleting variant {} with {} images", variant.getId(), variant.getImages().size());
+
+            // Delete images from R2 storage
+            List<String> imageKeys = variant.getImages().stream()
+                    .map(ProductImage::getImageKey)
+                    .collect(Collectors.toList());
+
+            for (String imageKey : imageKeys) {
+                try {
+                    r2StorageService.deleteFile(imageKey);
+                    log.debug("Deleted image: {}", imageKey);
+                } catch (Exception e) {
+                    log.error("Failed to delete image: {}", imageKey, e);
+                }
+            }
+
+            // Remove from product and delete
+            product.getProductVariants().remove(variant);
+            productVariantRepository.delete(variant);
+            log.info("Variant {} deleted successfully", variant.getId());
+        }
+    }
+
+    private void validateProductUpdate(Product product, ProductUpdateRequest request) {
+        // price
+        if (request.getPrice() != null && request.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessValidationException("Product price must be greater than zero");
+        }
+
+        // variants: only validate if client actually sent them
+        if (request.getVariants() == null) {
+            return; // not updating variants
+        }
+
+        if (request.getVariants().isEmpty()) {
+            return; // treat empty as "no changes"
+            // OR if you want to reject, replace with:
+            // throw new BusinessValidationException("Product must have at least one variant");
+        }
+
+        validateVariantSkusForUpdate(product, request.getVariants());
+    }
+
+
+    /**
+     * Updates an existing variant
+     */
+    private void updateExistingVariant(Product product, ProductVariantUpdateRequest request) {
+        ProductVariant existingVariant = product.getProductVariants().stream()
+                .filter(v -> v.getId().equals(request.getId()))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Variant not found with id: " + request.getId()));
+
+        log.info("Updating existing variant: {} (SKU: {} -> {})",
+                existingVariant.getId(), existingVariant.getSku(), request.getSku());
+
+        updateVariantFields(existingVariant, request);
+    }
+
+    /**
+     * Adds a new variant to the product
+     */
+    private void addNewVariant(Product product, ProductVariantUpdateRequest request) {
+        log.info("Adding new variant with SKU: {}", request.getSku());
+
+        ProductVariant newVariant = new ProductVariant();
+        updateVariantFields(newVariant, request);
+        newVariant.setProduct(product);
+        newVariant.setCreatedAt(LocalDateTime.now());
+        product.addVariant(newVariant);
     }
 
     private void updateVariantFields(ProductVariant variant, ProductVariantUpdateRequest request) {
@@ -287,6 +352,72 @@ public class ProductServiceImpl implements ProductService {
         variant.setStockQuantity(request.getStockQuantity());
         variant.setPriceAdjustment(request.getPriceAdjustment());
         variant.setUpdatedAt(LocalDateTime.now());
+    }
+
+    /**
+     * Validates variant SKUs for update operation
+     * This prevents the duplicate key constraint violation error
+     */
+    private void validateVariantSkusForUpdate(Product product, List<ProductVariantUpdateRequest> variants) {
+        Set<String> newSkus = new HashSet<>();
+
+        // Build map of existing variant SKUs from the already-loaded product
+        Map<Long, String> existingVariantSkus = product.getProductVariants().stream()
+                .collect(Collectors.toMap(ProductVariant::getId, ProductVariant::getSku));
+
+        log.debug("Validating SKUs. Existing variants for product {}: {}",
+                product.getId(), existingVariantSkus);
+
+        for (ProductVariantUpdateRequest variant : variants) {
+            if (variant.getSku() == null || variant.getSku().isBlank()) {
+                throw new BusinessValidationException("Variant SKU cannot be empty");
+            }
+
+            String normalizedSku = variant.getSku().trim().toUpperCase();
+
+            // Check for duplicates in request
+            if (!newSkus.add(normalizedSku)) {
+                throw new BusinessValidationException(
+                        String.format("Duplicate SKU in request: %s", normalizedSku)
+                );
+            }
+
+            // FIXED: If variant is keeping its existing SKU, skip validation
+            if (variant.getId() != null) {
+                String existingSku = existingVariantSkus.get(variant.getId());
+                if (existingSku != null && existingSku.equalsIgnoreCase(normalizedSku)) {
+                    log.debug("Variant {} keeping its existing SKU: {}", variant.getId(), normalizedSku);
+                    continue; // This variant is keeping its own SKU - no need to validate
+                }
+            }
+
+            // Validate SKU doesn't exist elsewhere in database
+            validateSkuUnique(normalizedSku, variant.getId());
+        }
+    }
+    private void validateSkuUnique(String sku, Long currentVariantId) {
+        productVariantRepository.findBySku(sku).ifPresent(existing -> {
+            // If we're updating an existing variant, only throw if SKU belongs to a DIFFERENT variant
+            if (currentVariantId == null || !existing.getId().equals(currentVariantId)) {
+                throw new BusinessValidationException(
+                        String.format("SKU '%s' already exists (Variant ID: %d)", sku, existing.getId())
+                );
+            }
+        });
+    }
+
+    /**
+     * Checks if SKU exists for a different variant (for existing variants being updated)
+     */
+    private void checkSkuExistsForOtherVariant(String sku, Long variantId) {
+        productVariantRepository.findBySku(sku).ifPresent(existing -> {
+            if (!existing.getId().equals(variantId)) {
+                throw new BusinessValidationException(
+                        String.format("SKU '%s' already exists for another variant (Variant ID: %d)",
+                                sku, existing.getId())
+                );
+            }
+        });
     }
 
 
@@ -300,6 +431,7 @@ public class ProductServiceImpl implements ProductService {
             LocalDate endDate,
             String size,
             String color,
+            Long createdById,
             Pageable pageable
     ) {
         Page<Product> productPage = productRepository.findByFilters(
@@ -311,11 +443,13 @@ public class ProductServiceImpl implements ProductService {
                 endDate,
                 emptyToNull(size),
                 emptyToNull(color),
+                createdById,     // ✅ new
                 pageable
         );
 
         return buildPageResponse(productPage, emptyToNull(size), emptyToNull(color));
     }
+
 
 
     @Override
@@ -350,6 +484,28 @@ public class ProductServiceImpl implements ProductService {
                 )
         );
         productRepository.delete(product);
+    }
+
+    private void validateVariantSkus(List<?> variants) {
+        if (variants == null || variants.isEmpty()) {
+            throw new BusinessValidationException("Product must have at least one variant");
+        }
+
+        // Check for duplicate SKUs in the request
+        Set<String> skus = new HashSet<>();
+        for (Object obj : variants) {
+            String sku = null;
+            if (obj instanceof ProductVariantUpdateRequest) {
+                sku = ((ProductVariantUpdateRequest) obj).getSku();
+            }
+
+            if (sku != null && !sku.isBlank()) {
+                String normalizedSku = sku.trim().toUpperCase();
+                if (!skus.add(normalizedSku)) {
+                    throw new BusinessValidationException("Duplicate SKU in request: " + normalizedSku);
+                }
+            }
+        }
     }
 
     private String emptyToNull(String s) {

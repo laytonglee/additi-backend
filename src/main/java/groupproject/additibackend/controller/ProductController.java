@@ -139,6 +139,7 @@ public class ProductController {
 
             @RequestParam(required = false) String sizeValue,
             @RequestParam(required = false) String color,
+            @RequestParam(required = false) Long categoryId,
 
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
@@ -158,12 +159,12 @@ public class ProductController {
                 endDate,
                 sizeValue,
                 color,
+                categoryId,
                 pageable
         );
 
         return ResponseEntity.ok(ApiResponse.success(response, "Products retrieved successfully"));
     }
-
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ProductDetailResponse>> getById(@PathVariable Long id) {
