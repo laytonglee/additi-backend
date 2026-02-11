@@ -1,6 +1,7 @@
 package groupproject.additibackend.mapper;
 
 import groupproject.additibackend.model.Category;
+import groupproject.additibackend.model.User;
 import groupproject.additibackend.request.CategoryRequest;
 import groupproject.additibackend.response.CategoryResponse;
 import org.springframework.stereotype.Component;
@@ -24,17 +25,24 @@ public class CategoryMapper {
     }
 
     public CategoryResponse toCategoryResponse(Category category) {
-        return CategoryResponse.builder()
-                .id(category.getId())
-                .name(category.getName())
-                .slug(category.getSlug())
-                .description(category.getDescription())
-                .isActive(category.getIsActive())
-                .createdAt(category.getCreatedAt())
-//                .productCount(category.getProducts() != null ? (long) category.getProducts().size() : 0L)
-                .build();
+        CategoryResponse response = new CategoryResponse();
+        response.setId(category.getId());
+        response.setName(category.getName());
+        response.setSlug(category.getSlug());
+        response.setDescription(category.getDescription());
+        response.setIsActive(category.getIsActive());
+        response.setCreatedAt(category.getCreatedAt());
+        response.setUpdatedAt(category.getUpdatedAt());
+        if (category.getCreatedBy() != null) {
+            User u = category.getCreatedBy();
+            response.setCreatedById(u.getId());
+            response.setCreatedByEmail(u.getEmail());
+            response.setCreatedByUsername(u.getRealUsername());
+            response.setCreatedByPhoto(u.getPhoto());
+            // or category.getCreatedBy().getUsername() if you prefer email/override behavior
+        }
+        return response;
     }
-
     private String generateSlug(String text) {
         return text.toLowerCase()
                 .replaceAll("[^a-z0-9\\s-]", "")
