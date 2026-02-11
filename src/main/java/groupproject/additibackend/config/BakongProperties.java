@@ -13,9 +13,12 @@ import lombok.Setter;
 public class BakongProperties {
     
     private String token;
+    // merchantId is not used for individual KHQR accounts, kept for reference only
     private String merchantId;
     private String merchantName;
-    private String accountId; // e.g., "merchant@aba" or "merchant@wing"
+    // Account ID format: "phone_number@bank" or "username@bank"
+    // Examples: "012345678@aba", "012345678@wing", "username@bkrt"
+    private String accountId;
     private String apiUrl = "https://api-bakong.nbc.gov.kh";
     private String currency = "USD"; // or "KHR"
 }
