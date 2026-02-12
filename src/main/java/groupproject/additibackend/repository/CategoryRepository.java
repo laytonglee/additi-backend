@@ -13,15 +13,7 @@ import java.util.Optional;
 @Repository
 public interface CategoryRepository  extends JpaRepository<Category,Long> {
 
-    Optional<Category> findBySlug(String slug);
-
-    List<Category> findByIsActiveTrue();
-
     boolean existsByNameIgnoreCase(String name);
-
-    List<Category> findByIsActive(Boolean isActive);
-
-    List<Category> findByNameContainingIgnoreCase(String name);
 
     @Query("""
 SELECT c FROM Category c
@@ -46,6 +38,8 @@ ORDER BY c.id DESC
             @Param("createdAtEnd") LocalDateTime createdAtEnd,
             @Param("createdById") Long createdById
     );
+
+    Long countByIsActive(Boolean isActive);
 
 
 

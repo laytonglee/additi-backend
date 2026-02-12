@@ -31,7 +31,6 @@ public class AdminProductController {
         ProductResponse response = productService.setFeatured(id, featured, order);
         return ResponseEntity.ok(ApiResponse.success(response, "Product featured status updated"));
     }
-
     @PutMapping("/{id}/status")
     public ResponseEntity<ApiResponse<ProductResponse>> setStatus(
             @PathVariable Long id,

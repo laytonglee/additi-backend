@@ -10,7 +10,9 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 
@@ -130,5 +132,48 @@ WHERE p.id = :id
 
     // count product by category
     Long countByCategoryId(Long categoryId);
+
+
+    // === Analytics Queries ===
+
+    // Count products by status
+    Long countByIsActive(Boolean isActive);
+
+    // Find recent products
+    Page<Product> findTop10ByOrderByCreatedAtDesc(Pageable pageable);
+
+    // Price statistics
+    @Query("SELECT MIN(p.price) FROM Product p WHERE p.isActive = true")
+    BigDecimal findMinPrice();
+
+    @Query("SELECT MAX(p.price) FROM Product p WHERE p.isActive = true")
+    BigDecimal findMaxPrice();
+
+    @Query("SELECT AVG(p.price) FROM Product p WHERE p.isActive = true")
+    BigDecimal findAvgPrice();
+
+    @Query("SELECT SUM(p.price) FROM Product p WHERE p.isActive = true")
+    BigDecimal findTotalValue();
+
+    // Category statistics
+    @Query("SELECT new map(c.name as categoryName, c.slug as categorySlug, " +
+            "COUNT(p) as productCount, " +
+            "SUM(p.price) as totalValue, " +
+            "AVG(p.price) as avgPrice) " +
+            "FROM Product p JOIN p.category c " +
+            "WHERE p.isActive = true " +
+            "GROUP BY c.id, c.name, c.slug " +
+            "ORDER BY COUNT(p) DESC")
+    List<Map<String, Object>> findCategoryStatistics();
+
+    // Products created in date range
+    @Query("SELECT COUNT(p) FROM Product p WHERE p.createdAt BETWEEN :startDate AND :endDate")
+    Long countProductsCreatedBetween(@Param("startDate") LocalDateTime startDate,
+                                     @Param("endDate") LocalDateTime endDate);
+
+    // Products by price range
+    @Query("SELECT COUNT(p) FROM Product p WHERE p.price BETWEEN :minPrice AND :maxPrice")
+    Long countProductsByPriceRange(@Param("minPrice") BigDecimal minPrice,
+                                   @Param("maxPrice") BigDecimal maxPrice);
 
 }
