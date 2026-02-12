@@ -1,10 +1,11 @@
 package groupproject.additibackend.response;
-
-import groupproject.additibackend.model.User;
 import jakarta.annotation.Nullable;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.Set;
+
 
 @Data
 @AllArgsConstructor
@@ -28,15 +29,7 @@ public class MeResponse {
     @Nullable
     private String bio;
 
+    @Nullable
+    private Set<String> roles;
 
-    public static MeResponse from(User user) {
-        return new MeResponse(
-                user.getRealUsername(),
-                user.getEmail(),
-                user.getPhoto(),
-                user.getPhoneNumber(),
-                user.getAddress(),
-                user.getBio()
-        );
-    }
 }

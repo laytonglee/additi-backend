@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import lombok.Data;
 
+import java.util.Set;
+
 
 @Data
 public class AuthResponse {
@@ -17,7 +19,6 @@ public class AuthResponse {
     @JsonProperty("type")
     private String type = "Bearer";
 
-    @JsonProperty("user")
-    private UserViewResponse user;
+    private Set<String> roles;
 
 }
