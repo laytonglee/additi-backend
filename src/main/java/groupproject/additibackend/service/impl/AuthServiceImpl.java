@@ -2,6 +2,7 @@ package groupproject.additibackend.service.impl;
 
 import groupproject.additibackend.config.JwtProperties;
 import groupproject.additibackend.model.RefreshToken;
+import groupproject.additibackend.model.Role;
 import groupproject.additibackend.model.User;
 import groupproject.additibackend.repository.RefreshTokenRepository;
 import groupproject.additibackend.repository.UserRepository;
@@ -22,6 +23,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -87,6 +89,12 @@ public class AuthServiceImpl implements AuthService {
 
         AuthResponse authResponse = new AuthResponse();
         authResponse.setType("Bearer");
+        authResponse.setAccessToken(refreshToken);
+        authResponse.setRefreshToken(refreshToken);
+        authResponse.setRoles(user.getRoles()
+                .stream()
+                .map(Role::getName)
+                .collect(Collectors.toSet()));
 
         return authResponse;
     }
@@ -111,6 +119,11 @@ public class AuthServiceImpl implements AuthService {
         res.setAddress(user.getAddress());
         res.setBio(user.getBio());
         res.setPhoneNumber(user.getPhoneNumber());
+        res.setRoles(
+                user.getRoles()
+                        .stream()
+                        .map(Role::getName)
+                        .collect(Collectors.toSet()));
 
         return res;
     }
