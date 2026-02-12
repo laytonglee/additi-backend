@@ -123,13 +123,19 @@ public class AuthServiceImpl implements AuthService {
             refreshTokenService.revoke(refreshToken);
         }
 
-        Cookie cookie = new Cookie("refresh_token", null);
+        deleteCookie("refreshToken", response);
+        deleteCookie("accessToken", response);
+    }
+
+    private void deleteCookie(String name, HttpServletResponse response) {
+        Cookie cookie = new Cookie(name, "");
         cookie.setHttpOnly(true);
         cookie.setSecure(true);
         cookie.setPath("/");
-        cookie.setMaxAge(0); // 🔥 DELETE cookie
+        cookie.setMaxAge(0);
         response.addCookie(cookie);
     }
+
 
     @Override
     public ResponseEntity<?> refresh(
