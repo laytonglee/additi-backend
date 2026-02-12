@@ -1,6 +1,7 @@
 package groupproject.additibackend.config;
 
-import jakarta.servlet.http.HttpServletResponse;
+import java.util.List;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -22,7 +23,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.List;
+import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
 @EnableWebSecurity
@@ -48,31 +49,35 @@ public class SecurityConfig {
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/error").permitAll()
+                
+                // Auth endpoints - specific rules BEFORE wildcards
                 .requestMatchers("/api/auth/login").permitAll()
-                .requestMatchers("/api/products/**").permitAll()
-                        .requestMatchers("/api/auth/logout").permitAll()
-                .requestMatchers("/api/categories/**").permitAll()
-                        .requestMatchers("/api/auth/refresh").permitAll()
-
-                        // permit auth endpoints
-//                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/auth/logout").permitAll()
+                .requestMatchers("/api/auth/refresh").permitAll()
+                .requestMatchers("/api/auth/me").authenticated()
+                .requestMatchers("/api/auth/profile").authenticated()
+                .requestMatchers("/api/auth/**").permitAll()
+                
+                // User registration
+                .requestMatchers("/api/users/register").permitAll()
+                
+                // Products - GET is public, modifications require ADMIN
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/products/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
+                
+                // Categories - GET is public, modifications require ADMIN
                 .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/categories/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/categories/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/categories/**").hasRole("ADMIN")
-                // permit auth endpoints
-                .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/users/register").permitAll()
-                // keep these protected
-                .requestMatchers("/api/auth/me").authenticated()
-                .requestMatchers("/api/auth/profile").authenticated()
+                
+                // Admin endpoints
                 .requestMatchers("/dashboard").hasRole("ADMIN")
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .requestMatchers("/api/auth/logout").permitAll()
+                
+                // Everything else requires authentication
                 .anyRequest().authenticated()
         );
 
