@@ -53,7 +53,6 @@ public class Order {
 
     private String phoneNumber;
 
-
     private LocalDateTime createdAt = LocalDateTime.now();
 
     private LocalDateTime updatedAt = LocalDateTime.now();

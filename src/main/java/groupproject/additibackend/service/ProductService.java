@@ -1,5 +1,6 @@
 package groupproject.additibackend.service;
 
+import groupproject.additibackend.model.ProductStatus;
 import groupproject.additibackend.request.ProductCreateRequest;
 import groupproject.additibackend.request.ProductUpdateRequest;
 import groupproject.additibackend.response.PageResponse;
@@ -11,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -50,6 +52,16 @@ public interface ProductService {
     ProductDetailResponse getProductById(Long id);
 
     void deleteProduct(Long id);
+
+    List<ProductResponse> getBestSellers(int limit);
+
+    List<ProductResponse> getFeaturedProducts();
+
+    List<ProductResponse> getComingSoonProducts();
+
+    ProductResponse setFeatured(Long productId, boolean featured, Integer featuredOrder);
+
+    ProductResponse setProductStatus(Long productId, ProductStatus status, LocalDateTime availableDate);
 
 
     PageResponse<ProductResponse> getAllProducts(

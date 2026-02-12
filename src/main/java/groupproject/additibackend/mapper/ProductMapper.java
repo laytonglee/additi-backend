@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import groupproject.additibackend.model.Category;
 import groupproject.additibackend.model.Product;
+import groupproject.additibackend.model.ProductStatus;
 import groupproject.additibackend.request.ProductCreateRequest;
 import groupproject.additibackend.response.ProductResponse;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +17,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ProductMapper {
     private  final ProductVariantMapper productVariantMapper;
-    private final CategoryMapper categoryMapper;
+    private final  CategoryMapper categoryMapper;
 
     public Product toProductEntity(ProductCreateRequest request, Category category) {
         Product product = new Product();
@@ -26,6 +27,9 @@ public class ProductMapper {
         product.setBrand(request.getBrand());
         product.setCategory(category);
         product.setIsActive(true);
+        product.setIsFeatured(false);
+        product.setStatus(ProductStatus.ACTIVE);
+        product.setSalesCount(0);
         product.setCreatedAt(LocalDateTime.now());
         product.setUpdatedAt(LocalDateTime.now());
 
@@ -50,6 +54,11 @@ public class ProductMapper {
                 .price(product.getPrice())
                 .brand(product.getBrand())
                 .isActive(product.getIsActive())
+                .isFeatured(product.getIsFeatured())
+                .featuredOrder(product.getFeaturedOrder())
+                .status(product.getStatus())
+                .availableDate(product.getAvailableDate())
+                .salesCount(product.getSalesCount())
                 .createdAt(product.getCreatedAt())
                 .updatedAt(product.getUpdatedAt())
                 .category(categoryMapper.toCategoryResponse(product.getCategory()))

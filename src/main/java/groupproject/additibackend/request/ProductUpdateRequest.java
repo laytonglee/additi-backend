@@ -1,5 +1,6 @@
 package groupproject.additibackend.request;
 
+import groupproject.additibackend.model.ProductStatus;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
@@ -8,6 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -34,6 +36,17 @@ public class ProductUpdateRequest {
 
     @NotNull(message = "Category ID is required")
     private Long categoryId;
+
+    private Boolean isActive;
+
+    private Boolean isFeatured;
+
+    @Min(value = 1, message = "Featured order must be greater than 0")
+    private Integer featuredOrder;
+
+    private ProductStatus status;
+
+    private LocalDateTime availableDate;
 
     @Valid
     @NotEmpty(message = "Product must have at least one variant")

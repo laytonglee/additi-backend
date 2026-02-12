@@ -20,6 +20,8 @@ import java.util.List;
         @Index(name="idx_product_name",columnList = "name"),
         @Index(name="idx_product_category",columnList = "category_id"),
         @Index(name="idx_product_active" , columnList = "is_active"),
+        @Index(name="idx_product_featured", columnList = "is_featured"),
+        @Index(name="idx_product_status", columnList = "status"),
         @Index(name="idx_product_created_by", columnList="created_by_user_id")
 })
 public class Product {
@@ -53,6 +55,22 @@ public class Product {
     @NotNull(message = "Active status is required")
     @Column(nullable = false)
     private Boolean isActive = true;
+
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private Boolean isFeatured = false;
+
+    @Column
+    private Integer featuredOrder;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20, nullable = false, columnDefinition = "varchar(20) default 'ACTIVE'")
+    private ProductStatus status = ProductStatus.ACTIVE;
+
+    @Column
+    private LocalDateTime availableDate;
+
+    @Column(nullable = false, columnDefinition = "integer default 0")
+    private Integer salesCount = 0;
 
     @Column(updatable = false)
     private LocalDateTime createdAt;

@@ -126,6 +126,29 @@ public class ProductServiceImpl implements ProductService {
         product.setDescription(request.getDescription());
         product.setPrice(request.getPrice());
         product.setBrand(request.getBrand());
+        if (request.getIsActive() != null) {
+            product.setIsActive(request.getIsActive());
+        }
+        if (request.getStatus() != null) {
+            product.setStatus(request.getStatus());
+        }
+        if (request.getIsFeatured() != null) {
+            product.setIsFeatured(request.getIsFeatured());
+        }
+
+        if (Boolean.FALSE.equals(product.getIsFeatured())) {
+            product.setFeaturedOrder(null);
+        } else if (request.getFeaturedOrder() != null) {
+            product.setFeaturedOrder(request.getFeaturedOrder());
+        }
+
+        if (product.getStatus() == ProductStatus.COMING_SOON) {
+            if (request.getAvailableDate() != null) {
+                product.setAvailableDate(request.getAvailableDate());
+            }
+        } else {
+            product.setAvailableDate(null);
+        }
         product.setUpdatedAt(LocalDateTime.now());
 
         // 3. Update category if changed
@@ -299,6 +322,17 @@ public class ProductServiceImpl implements ProductService {
         // price
         if (request.getPrice() != null && request.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
             throw new BusinessValidationException("Product price must be greater than zero");
+        }
+
+        ProductStatus effectiveStatus = request.getStatus() != null
+                ? request.getStatus()
+                : product.getStatus();
+        LocalDateTime effectiveAvailableDate = request.getAvailableDate() != null
+                ? request.getAvailableDate()
+                : product.getAvailableDate();
+
+        if (effectiveStatus == ProductStatus.COMING_SOON && effectiveAvailableDate == null) {
+            throw new BusinessValidationException("Available date is required when status is COMING_SOON");
         }
 
         // variants: only validate if client actually sent them
@@ -486,6 +520,58 @@ public class ProductServiceImpl implements ProductService {
         productRepository.delete(product);
     }
 
+    @Override
+    public List<ProductResponse> getBestSellers(int limit) {
+        int safeLimit = limit > 0 ? limit : 12;
+        Pageable pageable = PageRequest.of(0, safeLimit);
+        return productRepository.findBestSellers(pageable)
+                .stream()
+                .map(productMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    public List<ProductResponse> getFeaturedProducts() {
+        return productRepository.findFeaturedProducts()
+                .stream()
+                .map(productMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    public List<ProductResponse> getComingSoonProducts() {
+        return productRepository.findComingSoonProducts()
+                .stream()
+                .map(productMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public ProductResponse setFeatured(Long productId, boolean featured, Integer featuredOrder) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + productId));
+
+        product.setIsFeatured(featured);
+        product.setFeaturedOrder(featured ? featuredOrder : null);
+        product.setUpdatedAt(LocalDateTime.now());
+
+        return productMapper.toResponse(productRepository.save(product));
+    }
+
+    @Override
+    @Transactional
+    public ProductResponse setProductStatus(Long productId, ProductStatus status, LocalDateTime availableDate) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + productId));
+
+        product.setStatus(status);
+        product.setAvailableDate(availableDate);
+        product.setUpdatedAt(LocalDateTime.now());
+
+        return productMapper.toResponse(productRepository.save(product));
+    }
+
     private void validateVariantSkus(List<?> variants) {
         if (variants == null || variants.isEmpty()) {
             throw new BusinessValidationException("Product must have at least one variant");
@@ -513,9 +599,10 @@ public class ProductServiceImpl implements ProductService {
     }
 
 
-    private PageResponse<ProductResponse> buildPageResponse(Page<Product> productPage,
-                                                            String filterSize,
-                                                            String filterColor) {
+    private PageResponse<ProductResponse> buildPageResponse(
+            Page<Product> productPage,
+            String filterSize,
+            String filterColor) {
 
         List<ProductResponse> productResponses = productPage.getContent()
                 .stream()
@@ -525,23 +612,23 @@ public class ProductServiceImpl implements ProductService {
 
                     p.setVariants(
                             p.getVariants().stream()
-                                    .filter(v -> filterSize == null || filterSize.equalsIgnoreCase(v.getSize()))
-                                    .filter(v -> filterColor == null || filterColor.equalsIgnoreCase(v.getColor()))
+                                    .filter(v -> filterSize == null ||
+                                            filterSize.equalsIgnoreCase(v.getSize()))
+                                    .filter(v -> filterColor == null ||
+                                            filterColor.equalsIgnoreCase(v.getColor()))
                                     .toList()
                     );
                 })
                 .toList();
 
         return PageResponse.<ProductResponse>builder()
-                .products(productResponses)
+                .content(productResponses)
                 .pageNumber(productPage.getNumber())
                 .pageSize(productPage.getSize())
                 .totalElements(productPage.getTotalElements())
                 .totalPages(productPage.getTotalPages())
-                .last(productPage.isLast())
                 .build();
     }
-
 
 
 

@@ -67,6 +67,7 @@ public class SecurityConfig {
                 // permit auth endpoints
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/users/register").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/users/**").hasRole("ADMIN")
                 // keep these protected
                 .requestMatchers("/api/auth/me").authenticated()
                 .requestMatchers("/api/auth/profile").authenticated()

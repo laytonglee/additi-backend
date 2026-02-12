@@ -92,10 +92,43 @@ public class OrderServiceImpl implements groupproject.additibackend.service.Orde
     }
 
     @Override
+    @Transactional
     public Order updateOrderStatus(Long orderId, Order.OrderStatus status) {
         Order order = getOrderById(orderId);
+        Order.OrderStatus previousStatus = order.getStatus();
+
         order.setStatus(status);
         order.setUpdatedAt(LocalDateTime.now());
+
+        if (previousStatus != Order.OrderStatus.DELIVERED
+                && status == Order.OrderStatus.DELIVERED
+                && order.getOrderItems() != null) {
+            for (OrderItem item : order.getOrderItems()) {
+                Product product = item.getProduct();
+                int currentSales = product.getSalesCount() == null ? 0 : product.getSalesCount();
+                int quantity = item.getQuantity() == null ? 0 : item.getQuantity();
+                product.setSalesCount(currentSales + quantity);
+                productRepository.save(product);
+            }
+        }
+
+        return orderRepository.save(order);
+    }
+
+    @Transactional
+    public Order completeOrder(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        order.setStatus(Order.OrderStatus.CONFIRMED);
+
+        // Update sales count for each product
+        order.getOrderItems().forEach(item -> {
+            Product product = item.getProduct();
+            product.setSalesCount(product.getSalesCount() + item.getQuantity());
+            productRepository.save(product);
+        });
+
         return orderRepository.save(order);
     }
 }

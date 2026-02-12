@@ -97,6 +97,36 @@ WHERE p.id = :id
 """)
     Optional<Product> findProductById(@Param("id") Long id);
 
+    @Query("""
+    select p from Product p
+    where p.isActive = true
+      and p.status = groupproject.additibackend.model.ProductStatus.ACTIVE
+    order by p.salesCount desc, p.createdAt desc
+    """)
+    List<Product> findBestSellers(Pageable pageable);
+
+    @Query("""
+    select p from Product p
+    where p.isActive = true
+      and p.isFeatured = true
+    order by
+      case when p.featuredOrder is null then 1 else 0 end,
+      p.featuredOrder asc,
+      p.createdAt desc
+    """)
+    List<Product> findFeaturedProducts();
+
+    @Query("""
+    select p from Product p
+    where p.isActive = true
+      and p.status = groupproject.additibackend.model.ProductStatus.COMING_SOON
+    order by
+      case when p.availableDate is null then 1 else 0 end,
+      p.availableDate asc,
+      p.createdAt desc
+    """)
+    List<Product> findComingSoonProducts();
+
 
     // count product by category
     Long countByCategoryId(Long categoryId);

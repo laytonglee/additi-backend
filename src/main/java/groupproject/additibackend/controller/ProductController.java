@@ -3,9 +3,7 @@ package groupproject.additibackend.controller;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import groupproject.additibackend.request.ProductUpdateRequest;
 import groupproject.additibackend.request.ProductVariantRequest;
@@ -126,44 +124,73 @@ public class ProductController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<PageResponse<ProductResponse>>> getAllProducts(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getAllProducts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "DESC") String direction,
-
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String categorySlug,
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
-
             @RequestParam(required = false) String sizeValue,
             @RequestParam(required = false) String color,
             @RequestParam(required = false) Long categoryId,
-
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
     ) {
-        Sort sort = direction.equalsIgnoreCase("ASC")
-                ? Sort.by(sortBy).ascending()
-                : Sort.by(sortBy).descending();
+        page = Math.max(page, 0);
+        size = Math.min(Math.max(size, 1), 100);
 
-        Pageable pageable = PageRequest.of(page, size, sort);
+        Set<String> allowedSort = Set.of("id", "name", "price", "createdAt", "updatedAt", "salesCount", "status");
+        String safeSortBy = (sortBy == null) ? "id" : sortBy.trim();
+        if (!allowedSort.contains(safeSortBy)) safeSortBy = "id";
 
-        PageResponse<ProductResponse> response = productService.getAllProducts(
-                search,
-                categorySlug,
-                minPrice,
-                maxPrice,
-                startDate,
-                endDate,
-                sizeValue,
-                color,
-                categoryId,
-                pageable
+        Sort.Direction dir;
+        try { dir = Sort.Direction.fromString(direction); }
+        catch (IllegalArgumentException ex) { dir = Sort.Direction.DESC; }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(dir, safeSortBy));
+
+        search = (search == null || search.isBlank()) ? null : search.trim();
+        categorySlug = (categorySlug == null || categorySlug.isBlank()) ? null : categorySlug.trim();
+        sizeValue = (sizeValue == null || sizeValue.isBlank()) ? null : sizeValue.trim();
+        color = (color == null || color.isBlank()) ? null : color.trim();
+
+        PageResponse<ProductResponse> pageResp = productService.getAllProducts(
+                search, categorySlug, minPrice, maxPrice,
+                startDate, endDate, sizeValue, color, categoryId, pageable
         );
 
-        return ResponseEntity.ok(ApiResponse.success(response, "Products retrieved successfully"));
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("products", pageResp.getContent());          // ✅ rename here (or "product")
+        data.put("pageNumber", pageResp.getPageNumber());
+        data.put("pageSize", pageResp.getPageSize());
+        data.put("totalElements", pageResp.getTotalElements());
+        data.put("totalPages", pageResp.getTotalPages());
+
+        return ResponseEntity.ok(ApiResponse.success(data, "Products retrieved successfully"));
+    }
+
+
+
+    @GetMapping("/best-sellers")
+    public ResponseEntity<ApiResponse<List<ProductResponse>>> getBestSellers(
+            @RequestParam(defaultValue = "12") int limit) {
+        return ResponseEntity.ok(
+                ApiResponse.success(productService.getBestSellers(limit), "Best sellers retrieved successfully"));
+    }
+
+    @GetMapping("/featured")
+    public ResponseEntity<ApiResponse<List<ProductResponse>>> getFeaturedProducts() {
+        return ResponseEntity.ok(
+                ApiResponse.success(productService.getFeaturedProducts(), "Featured products retrieved successfully"));
+    }
+
+    @GetMapping("/coming-soon")
+    public ResponseEntity<ApiResponse<List<ProductResponse>>> getComingSoonProducts() {
+        return ResponseEntity.ok(
+                ApiResponse.success(productService.getComingSoonProducts(), "Coming soon products retrieved successfully"));
     }
 
     @GetMapping("/{id}")

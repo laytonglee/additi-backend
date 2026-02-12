@@ -1,39 +1,40 @@
 package groupproject.additibackend.service.impl;
 
+import groupproject.additibackend.mapper.UserMapper;
 import groupproject.additibackend.model.Role;
 import groupproject.additibackend.model.User;
 import groupproject.additibackend.repository.RoleRepository;
 import groupproject.additibackend.repository.UserRepository;
 import groupproject.additibackend.request.RegisterRequest;
 import groupproject.additibackend.request.UpdateMeRequest;
-import groupproject.additibackend.response.MeResponse;
-import groupproject.additibackend.response.RegisterResponse;
-import groupproject.additibackend.response.UpdateMeResponse;
+import groupproject.additibackend.request.UserRequest;
+import groupproject.additibackend.response.*;
 import groupproject.additibackend.service.R2StorageService;
 import groupproject.additibackend.service.UserService;
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private  final R2StorageService r2StorageService;
     private final RoleRepository roleRepository;
+    private  final UserMapper userMapper;
 
-    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, R2StorageService r2StorageService, RoleRepository roleRepository) {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.r2StorageService = r2StorageService;
-        this.roleRepository = roleRepository;
-    }
 
     @Override
     public RegisterResponse registerUser(RegisterRequest request, MultipartFile photo) throws IOException {
@@ -150,6 +151,25 @@ public class UserServiceImpl implements UserService {
         return response;
     }
 
+    @Override
+    public UserResponse createUser(UserRequest requestDTO) {
+        return null;
+    }
+
+    @Override
+    @Transactional
+    public UserResponse getUserById(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+        return userMapper.toResponseDTO(user);
+    }
+
+    @Override
+    public PageResponse<UserResponse> getAllUsers(Pageable pageable) {
+        Page<User> userPage = userRepository.findAll(pageable);
+        Page<UserResponse> userResponsePage = userPage.map(userMapper::toResponseDTO);
+        return PageResponse.of(userResponsePage);
+    }
 
 
 }

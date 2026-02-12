@@ -1,4 +1,6 @@
 package groupproject.additibackend.response;
+import groupproject.additibackend.model.ProductStatus;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -19,6 +21,11 @@ public class ProductResponse {
     private BigDecimal price;
     private String brand;
     private Boolean isActive;
+    private Boolean isFeatured;
+    private Integer featuredOrder;
+    private ProductStatus status;
+    private LocalDateTime availableDate;
+    private Integer salesCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Long createdById;
