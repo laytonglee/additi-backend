@@ -21,6 +21,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.time.Instant;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -116,8 +118,9 @@ public class AuthServiceImpl implements AuthService {
     public MeResponse me(Authentication authentication) {
 
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new RuntimeException("User not authenticated");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not authenticated");
         }
+
 
         String email = authentication.getName();
 
