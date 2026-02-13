@@ -92,6 +92,11 @@ public class OrderServiceImpl implements groupproject.additibackend.service.Orde
     }
 
     @Override
+    public List<Order> getAllOrders() {
+        return orderRepository.findAllByOrderByCreatedAtDesc();
+    }
+
+    @Override
     @Transactional
     public Order updateOrderStatus(Long orderId, Order.OrderStatus status) {
         Order order = getOrderById(orderId);

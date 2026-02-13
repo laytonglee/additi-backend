@@ -39,7 +39,7 @@ public class ProductController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<ProductResponse>> createProduct(
-            @RequestPart("product") String productJson,  // Accept as String
+            @RequestPart("product") String productJson,
             @RequestPart(value = "variant_0_images", required = false) List<MultipartFile> variant0Images,
             @RequestPart(value = "variant_1_images", required = false) List<MultipartFile> variant1Images,
             @RequestPart(value = "variant_2_images", required = false) List<MultipartFile> variant2Images,
@@ -52,7 +52,6 @@ public class ProductController {
         // Parse JSON string to ProductCreateRequest
         ProductCreateRequest request = objectMapper.readValue(productJson, ProductCreateRequest.class);
 
-        log.info("Parsed product request: {}", request.getName());
 
         // Collect variant images
         Map<Integer, List<MultipartFile>> variantImages = new HashMap<>();
@@ -70,11 +69,9 @@ public class ProductController {
         }
         if (variant3Images != null && !variant3Images.isEmpty()) {
             variantImages.put(3, variant3Images);
-            log.info("Variant 3: {} images", variant3Images.size());
         }
         if (variant4Images != null && !variant4Images.isEmpty()) {
             variantImages.put(4, variant4Images);
-            log.info("Variant 4: {} images", variant4Images.size());
         }
 
         ProductResponse response = productService.createProduct(request, variantImages);
@@ -139,40 +136,23 @@ public class ProductController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
     ) {
-        page = Math.max(page, 0);
-        size = Math.min(Math.max(size, 1), 100);
-
-        Set<String> allowedSort = Set.of("id", "name", "price", "createdAt", "updatedAt", "salesCount", "status");
-        String safeSortBy = (sortBy == null) ? "id" : sortBy.trim();
-        if (!allowedSort.contains(safeSortBy)) safeSortBy = "id";
-
-        Sort.Direction dir;
-        try { dir = Sort.Direction.fromString(direction); }
-        catch (IllegalArgumentException ex) { dir = Sort.Direction.DESC; }
-
-        Pageable pageable = PageRequest.of(page, size, Sort.by(dir, safeSortBy));
-
-        search = (search == null || search.isBlank()) ? null : search.trim();
-        categorySlug = (categorySlug == null || categorySlug.isBlank()) ? null : categorySlug.trim();
-        sizeValue = (sizeValue == null || sizeValue.isBlank()) ? null : sizeValue.trim();
-        color = (color == null || color.isBlank()) ? null : color.trim();
+        Pageable pageable = buildPageable(page, size, sortBy, direction);
 
         PageResponse<ProductResponse> pageResp = productService.getAllProducts(
-                search, categorySlug, minPrice, maxPrice,
-                startDate, endDate, sizeValue, color, categoryId, pageable
+                search,
+                categorySlug,
+                minPrice,
+                maxPrice,
+                startDate,
+                endDate,
+                sizeValue,
+                color,
+                categoryId,
+                pageable
         );
-
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("products", pageResp.getContent());          // ✅ rename here (or "product")
-        data.put("pageNumber", pageResp.getPageNumber());
-        data.put("pageSize", pageResp.getPageSize());
-        data.put("totalElements", pageResp.getTotalElements());
-        data.put("totalPages", pageResp.getTotalPages());
-
+        Map<String, Object> data = buildResponseData(pageResp);
         return ResponseEntity.ok(ApiResponse.success(data, "Products retrieved successfully"));
     }
-
-
 
     @GetMapping("/best-sellers")
     public ResponseEntity<ApiResponse<List<ProductResponse>>> getBestSellers(
@@ -203,6 +183,45 @@ public class ProductController {
     public ResponseEntity<ApiResponse<Void>> deleteProduct(@PathVariable Long id) {
         productService.deleteProduct(id);
         return ResponseEntity.ok(ApiResponse.success(null, "Product deleted successfully"));
+    }
+
+    private Pageable buildPageable(int page, int size, String sortBy, String direction) {
+        int validatedPage = Math.max(page, 0);
+        int validatedSize = Math.min(Math.max(size, 1), 100);
+        String validatedSortBy = validateSortField(sortBy);
+        Sort.Direction sortDirection = parseSortDirection(direction);
+
+        return PageRequest.of(validatedPage, validatedSize, Sort.by(sortDirection, validatedSortBy));
+    }
+
+    private String validateSortField(String sortBy) {
+        Set<String> allowedFields = Set.of("id", "name", "price", "createdAt", "updatedAt", "salesCount", "status");
+        String normalized = (sortBy == null) ? "id" : sortBy.trim();
+        return allowedFields.contains(normalized) ? normalized : "id";
+    }
+
+    private Sort.Direction parseSortDirection(String direction) {
+        try {
+            return Sort.Direction.fromString(direction);
+        } catch (IllegalArgumentException ex) {
+            return Sort.Direction.DESC;
+        }
+    }
+
+    private Map<String, Object> buildResponseData(PageResponse<ProductResponse> pageResponse) {
+        List<Map<String, Object>> products = pageResponse.getContent().stream()
+                .map(product -> objectMapper.convertValue(product, new TypeReference<Map<String, Object>>() {}))
+                .peek(productMap -> productMap.remove("salesCount"))
+                .toList();
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("products", products);
+        data.put("pageNumber", pageResponse.getPageNumber());
+        data.put("pageSize", pageResponse.getPageSize());
+        data.put("totalElements", pageResponse.getTotalElements());
+        data.put("totalPages", pageResponse.getTotalPages());
+
+        return data;
     }
 
 }

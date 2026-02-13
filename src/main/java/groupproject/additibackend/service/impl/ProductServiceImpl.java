@@ -39,13 +39,18 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class ProductServiceImpl implements ProductService {
+    private static final List<Order.OrderStatus> SALES_COUNTED_STATUSES = List.of(
+            Order.OrderStatus.CONFIRMED,
+            Order.OrderStatus.SHIPPED,
+            Order.OrderStatus.DELIVERED
+    );
+
     private  final ProductRepository productRepository;
     private  final CategoryRepository categoryRepository;
     private  final ProductVariantRepository productVariantRepository;
     private  final ProductMapper productMapper;
     private final R2StorageService r2StorageService;
     private final UserRepository userRepository;
-
 
     @Override
     @Transactional
@@ -54,7 +59,6 @@ public class ProductServiceImpl implements ProductService {
             Map<Integer, List<MultipartFile>> variantImages) throws IOException {
 
         log.info("Creating product: {}", request.getName());
-
         // ✅ 0) Get current user (createdBy)
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User currentUser = userRepository.findByEmail(email)
@@ -95,7 +99,6 @@ public class ProductServiceImpl implements ProductService {
                     uploadImagesForVariant(savedProduct.getId(), variant, files);
                 }
             }
-
             // Refresh product to get updated images
             Product finalSavedProduct = savedProduct;
             savedProduct = productRepository.findById(savedProduct.getId())
@@ -117,7 +120,6 @@ public class ProductServiceImpl implements ProductService {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Product not found with id: " + productId));
-
         // Vilidate sku
         validateProductUpdate(product, request);
 
@@ -252,13 +254,10 @@ public class ProductServiceImpl implements ProductService {
 
         return productMapper.toResponse(product);
     }
-
-
     /**
      * Enhanced variant update with better tracking and cleanup
      */
     private void updateProductVariants(Product product, List<ProductVariantUpdateRequest> variantRequests) {
-        log.info("Updating {} variants for product: {}", variantRequests.size(), product.getId());
 
         // Collect requested variant IDs
         Set<Long> requestedVariantIds = variantRequests.stream()
@@ -341,14 +340,13 @@ public class ProductServiceImpl implements ProductService {
         }
 
         if (request.getVariants().isEmpty()) {
-            return; // treat empty as "no changes"
+            return;
             // OR if you want to reject, replace with:
             // throw new BusinessValidationException("Product must have at least one variant");
         }
 
         validateVariantSkusForUpdate(product, request.getVariants());
     }
-
 
     /**
      * Updates an existing variant
@@ -429,6 +427,7 @@ public class ProductServiceImpl implements ProductService {
             validateSkuUnique(normalizedSku, variant.getId());
         }
     }
+
     private void validateSkuUnique(String sku, Long currentVariantId) {
         productVariantRepository.findBySku(sku).ifPresent(existing -> {
             // If we're updating an existing variant, only throw if SKU belongs to a DIFFERENT variant
@@ -439,21 +438,6 @@ public class ProductServiceImpl implements ProductService {
             }
         });
     }
-
-    /**
-     * Checks if SKU exists for a different variant (for existing variants being updated)
-     */
-    private void checkSkuExistsForOtherVariant(String sku, Long variantId) {
-        productVariantRepository.findBySku(sku).ifPresent(existing -> {
-            if (!existing.getId().equals(variantId)) {
-                throw new BusinessValidationException(
-                        String.format("SKU '%s' already exists for another variant (Variant ID: %d)",
-                                sku, existing.getId())
-                );
-            }
-        });
-    }
-
 
     @Override
     public PageResponse<ProductResponse> getAllProducts(
@@ -477,13 +461,14 @@ public class ProductServiceImpl implements ProductService {
                 endDate,
                 emptyToNull(size),
                 emptyToNull(color),
-                createdById,     // ✅ new
+                createdById,
                 pageable
         );
 
-        return buildPageResponse(productPage, emptyToNull(size), emptyToNull(color));
-    }
+        Map<Long, Integer> salesByProductId = getSalesByProductId(productPage.getContent());
 
+        return buildPageResponse(productPage, emptyToNull(size), emptyToNull(color), salesByProductId);
+    }
 
 
     @Override
@@ -506,7 +491,6 @@ public class ProductServiceImpl implements ProductService {
                 .build();
     }
 
-
     @Override
     public void deleteProduct(Long id) {
         Product product = productRepository.findById(id)
@@ -521,12 +505,17 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public List<ProductResponse> getBestSellers(int limit) {
-        int safeLimit = limit > 0 ? limit : 12;
+        int safeLimit = limit > 0 ? Math.min(limit, 100) : 12;
         Pageable pageable = PageRequest.of(0, safeLimit);
-        return productRepository.findBestSellers(pageable)
+        return productRepository.findBestSellersByOrderStatuses(SALES_COUNTED_STATUSES, pageable)
                 .stream()
-                .map(productMapper::toResponse)
+                .map(row -> {
+                    ProductResponse response = productMapper.toResponse(row.getProduct());
+                    response.setSalesCount(row.getTotalSold() == null ? 0 : row.getTotalSold().intValue());
+                    return response;
+                })
                 .toList();
     }
 
@@ -572,27 +561,6 @@ public class ProductServiceImpl implements ProductService {
         return productMapper.toResponse(productRepository.save(product));
     }
 
-    private void validateVariantSkus(List<?> variants) {
-        if (variants == null || variants.isEmpty()) {
-            throw new BusinessValidationException("Product must have at least one variant");
-        }
-
-        // Check for duplicate SKUs in the request
-        Set<String> skus = new HashSet<>();
-        for (Object obj : variants) {
-            String sku = null;
-            if (obj instanceof ProductVariantUpdateRequest) {
-                sku = ((ProductVariantUpdateRequest) obj).getSku();
-            }
-
-            if (sku != null && !sku.isBlank()) {
-                String normalizedSku = sku.trim().toUpperCase();
-                if (!skus.add(normalizedSku)) {
-                    throw new BusinessValidationException("Duplicate SKU in request: " + normalizedSku);
-                }
-            }
-        }
-    }
 
     private String emptyToNull(String s) {
         return (s == null || s.isBlank()) ? null : s.trim();
@@ -602,12 +570,15 @@ public class ProductServiceImpl implements ProductService {
     private PageResponse<ProductResponse> buildPageResponse(
             Page<Product> productPage,
             String filterSize,
-            String filterColor) {
+            String filterColor,
+            Map<Long, Integer> salesByProductId) {
 
         List<ProductResponse> productResponses = productPage.getContent()
                 .stream()
                 .map(productMapper::toResponse)
                 .peek(p -> {
+                    p.setSalesCount(salesByProductId.getOrDefault(p.getId(), 0));
+
                     if (p.getVariants() == null) return;
 
                     p.setVariants(
@@ -628,6 +599,28 @@ public class ProductServiceImpl implements ProductService {
                 .totalElements(productPage.getTotalElements())
                 .totalPages(productPage.getTotalPages())
                 .build();
+    }
+
+    private Map<Long, Integer> getSalesByProductId(List<Product> products) {
+        if (products == null || products.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<Long> productIds = products.stream()
+                .map(Product::getId)
+                .filter(Objects::nonNull)
+                .toList();
+
+        if (productIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        return productRepository.findProductSalesByIdsAndOrderStatuses(productIds, SALES_COUNTED_STATUSES)
+                .stream()
+                .collect(Collectors.toMap(
+                        ProductRepository.ProductSalesProjection::getProductId,
+                        row -> row.getTotalSold() == null ? 0 : row.getTotalSold().intValue()
+                ));
     }
 
 

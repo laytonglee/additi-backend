@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -51,6 +52,16 @@ public class OrderController {
     public ResponseEntity<List<OrderResponse>> getUserOrders(Authentication authentication) {
         User user = (User) authentication.getPrincipal();
         List<Order> orders = orderService.getUserOrders(user);
+        List<OrderResponse> responses = orders.stream()
+                .map(this::convertToOrderResponse)
+                .collect(Collectors.toList());
+        return new ResponseEntity<>(responses, HttpStatus.OK);
+    }
+    
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/")
+    public ResponseEntity<List<OrderResponse>> getAllOrders() {
+        List<Order> orders = orderService.getAllOrders();
         List<OrderResponse> responses = orders.stream()
                 .map(this::convertToOrderResponse)
                 .collect(Collectors.toList());

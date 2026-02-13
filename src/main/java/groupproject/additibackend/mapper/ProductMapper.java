@@ -1,7 +1,10 @@
 package groupproject.additibackend.mapper;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import groupproject.additibackend.model.User;
 import org.springframework.stereotype.Component;
@@ -10,7 +13,9 @@ import groupproject.additibackend.model.Category;
 import groupproject.additibackend.model.Product;
 import groupproject.additibackend.model.ProductStatus;
 import groupproject.additibackend.request.ProductCreateRequest;
+import groupproject.additibackend.response.ProductImageResponse;
 import groupproject.additibackend.response.ProductResponse;
+import groupproject.additibackend.response.ProductVariantResponse;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -47,11 +52,23 @@ public class ProductMapper {
     }
 
     public ProductResponse toResponse(Product product) {
+        List<ProductVariantResponse> variants = product.getProductVariants().stream()
+                .map(productVariantMapper::toResponse)
+                .collect(Collectors.toList());
+
+        String thumbnailImage = variants.stream()
+                .filter(Objects::nonNull)
+                .flatMap(v -> v.getImages() == null ? Stream.empty() : v.getImages().stream())
+                .map(ProductImageResponse::getImageUrl)
+                .filter(url -> url != null && !url.isBlank())
+                .findFirst()
+                .orElse(null);
         ProductResponse res = ProductResponse.builder()
                 .id(product.getId())
                 .name(product.getName())
                 .description(product.getDescription())
                 .price(product.getPrice())
+                .thumbnailImage(thumbnailImage)
                 .brand(product.getBrand())
                 .isActive(product.getIsActive())
                 .isFeatured(product.getIsFeatured())
@@ -62,9 +79,7 @@ public class ProductMapper {
                 .createdAt(product.getCreatedAt())
                 .updatedAt(product.getUpdatedAt())
                 .category(categoryMapper.toCategoryResponse(product.getCategory()))
-                .variants(product.getProductVariants().stream()
-                        .map(productVariantMapper::toResponse)
-                        .collect(Collectors.toList()))
+                .variants(variants)
                 .build();
 
         if (product.getCreatedBy() != null) {
