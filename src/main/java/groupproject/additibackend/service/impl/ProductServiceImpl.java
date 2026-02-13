@@ -59,6 +59,7 @@ public class ProductServiceImpl implements ProductService {
             Map<Integer, List<MultipartFile>> variantImages) throws IOException {
 
         log.info("Creating product: {}", request.getName());
+        validateProductCreate(request);
         // ✅ 0) Get current user (createdBy)
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User currentUser = userRepository.findByEmail(email)
@@ -346,6 +347,16 @@ public class ProductServiceImpl implements ProductService {
         }
 
         validateVariantSkusForUpdate(product, request.getVariants());
+    }
+
+    private void validateProductCreate(ProductCreateRequest request) {
+        ProductStatus status = request.getStatus() != null
+                ? request.getStatus()
+                : ProductStatus.ACTIVE;
+
+        if (status == ProductStatus.COMING_SOON && request.getAvailableDate() == null) {
+            throw new BusinessValidationException("Available date is required when status is COMING_SOON");
+        }
     }
 
     /**

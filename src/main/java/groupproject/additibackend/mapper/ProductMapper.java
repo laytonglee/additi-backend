@@ -26,14 +26,16 @@ public class ProductMapper {
 
     public Product toProductEntity(ProductCreateRequest request, Category category) {
         Product product = new Product();
+        ProductStatus status = request.getStatus() != null ? request.getStatus() : ProductStatus.ACTIVE;
         product.setName(request.getName());
         product.setDescription(request.getDescription());
         product.setPrice(request.getPrice());
         product.setBrand(request.getBrand());
         product.setCategory(category);
-        product.setIsActive(true);
+        product.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);
         product.setIsFeatured(false);
-        product.setStatus(ProductStatus.ACTIVE);
+        product.setStatus(status);
+        product.setAvailableDate(status == ProductStatus.COMING_SOON ? request.getAvailableDate() : null);
         product.setSalesCount(0);
         product.setCreatedAt(LocalDateTime.now());
         product.setUpdatedAt(LocalDateTime.now());
