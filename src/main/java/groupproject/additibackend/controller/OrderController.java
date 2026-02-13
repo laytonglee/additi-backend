@@ -59,9 +59,12 @@ public class OrderController {
     }
     
     @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping("/")
-    public ResponseEntity<List<OrderResponse>> getAllOrders() {
-        List<Order> orders = orderService.getAllOrders();
+    @GetMapping({"/", "/all"})
+    public ResponseEntity<List<OrderResponse>> getAllOrders(
+            @RequestParam(required = false) Long userId) {
+        List<Order> orders = userId == null
+                ? orderService.getAllOrders()
+                : orderService.getAllOrdersByUserId(userId);
         List<OrderResponse> responses = orders.stream()
                 .map(this::convertToOrderResponse)
                 .collect(Collectors.toList());
@@ -69,8 +72,16 @@ public class OrderController {
     }
 
     @GetMapping("/{orderId}")
-    public ResponseEntity<OrderResponse> getOrder(@PathVariable Long orderId) {
-        Order order = orderService.getOrderById(orderId);
+    public ResponseEntity<OrderResponse> getOrder(
+            @PathVariable Long orderId,
+            Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(auth -> "ROLE_ADMIN".equals(auth.getAuthority()));
+
+        Order order = isAdmin
+                ? orderService.getOrderById(orderId)
+                : orderService.getOrderByIdForUser(orderId, user.getId());
         OrderResponse response = convertToOrderResponse(order);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
@@ -126,6 +137,11 @@ public class OrderController {
     private OrderResponse convertToOrderResponse(Order order) {
         OrderResponse response = new OrderResponse();
         response.setId(order.getId());
+        if (order.getUser() != null) {
+            response.setUserId(order.getUser().getId());
+            response.setUserEmail(order.getUser().getEmail());
+            response.setUsername(order.getUser().getRealUsername());
+        }
         response.setTotalAmount(order.getTotalAmount());
         response.setStatus(order.getStatus().toString());
         response.setShippingAddress(order.getShippingAddress());

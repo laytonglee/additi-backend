@@ -87,6 +87,12 @@ public class OrderServiceImpl implements groupproject.additibackend.service.Orde
     }
 
     @Override
+    public Order getOrderByIdForUser(Long orderId, Long userId) {
+        return orderRepository.findByIdAndUserId(orderId, userId)
+                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+    }
+
+    @Override
     public List<Order> getUserOrders(User user) {
         return orderRepository.findByUserOrderByCreatedAtDesc(user);
     }
@@ -94,6 +100,11 @@ public class OrderServiceImpl implements groupproject.additibackend.service.Orde
     @Override
     public List<Order> getAllOrders() {
         return orderRepository.findAllByOrderByCreatedAtDesc();
+    }
+
+    @Override
+    public List<Order> getAllOrdersByUserId(Long userId) {
+        return orderRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
 
     @Override

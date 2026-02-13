@@ -9,6 +9,9 @@ import java.util.List;
 @Data
 public class OrderResponse {
     private Long id;
+    private Long userId;
+    private String userEmail;
+    private String username;
     private List<OrderItemResponse> items;
     private BigDecimal totalAmount;
     private String status;
