@@ -1,6 +1,7 @@
 package groupproject.additibackend.service.impl;
 
 import groupproject.additibackend.mapper.UserMapper;
+import groupproject.additibackend.exception.ResourceNotFoundException;
 import groupproject.additibackend.model.Role;
 import groupproject.additibackend.model.User;
 import groupproject.additibackend.repository.RoleRepository;
@@ -8,6 +9,7 @@ import groupproject.additibackend.repository.UserRepository;
 import groupproject.additibackend.request.RegisterRequest;
 import groupproject.additibackend.request.UpdateMeRequest;
 import groupproject.additibackend.request.UserRequest;
+import groupproject.additibackend.request.UserUpdateRequest;
 import groupproject.additibackend.response.*;
 import groupproject.additibackend.service.R2StorageService;
 import groupproject.additibackend.service.UserService;
@@ -21,9 +23,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -153,14 +154,38 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserResponse createUser(UserRequest requestDTO) {
-        return null;
+        String email = requestDTO.getEmail().trim();
+        if (userRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException("Email already in use");
+        }
+
+        User user = userMapper.toEntity(requestDTO);
+        user.setEmail(email);
+        user.setPassword(passwordEncoder.encode(requestDTO.getPassword()));
+
+        Set<Role> roles;
+        if (requestDTO.getRoleIds() == null || requestDTO.getRoleIds().isEmpty()) {
+            Role userRole = roleRepository.findByName("USER")
+                    .orElseThrow(() -> new ResourceNotFoundException("Role USER not found"));
+            roles = Set.of(userRole);
+        } else {
+            roles = new HashSet<>(roleRepository.findAllById(requestDTO.getRoleIds()));
+            if (roles.size() != requestDTO.getRoleIds().size()) {
+                throw new ResourceNotFoundException("One or more role IDs are invalid");
+            }
+        }
+
+        user.setRoles(roles);
+
+        User savedUser = userRepository.save(user);
+        return userMapper.toResponseDTO(savedUser);
     }
 
     @Override
     @Transactional
     public UserResponse getUserById(Long id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
         return userMapper.toResponseDTO(user);
     }
 
@@ -169,6 +194,71 @@ public class UserServiceImpl implements UserService {
         Page<User> userPage = userRepository.findAll(pageable);
         Page<UserResponse> userResponsePage = userPage.map(userMapper::toResponseDTO);
         return PageResponse.of(userResponsePage);
+    }
+
+    @Override
+    @Transactional
+    public UserResponse updateUser(Long id, UserUpdateRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+
+        if (request.getUsername() != null && !request.getUsername().isBlank()) {
+            user.setUsername(request.getUsername());
+        }
+
+        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+            String normalizedEmail = request.getEmail().trim();
+            userRepository.findByEmail(normalizedEmail).ifPresent(existing -> {
+                if (!existing.getId().equals(user.getId())) {
+                    throw new IllegalArgumentException("Email already in use");
+                }
+            });
+            user.setEmail(normalizedEmail);
+        }
+
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
+        }
+
+        if (request.getPhoneNumber() != null) {
+            user.setPhoneNumber(request.getPhoneNumber());
+        }
+
+        if (request.getAddress() != null) {
+            user.setAddress(request.getAddress());
+        }
+
+        if (request.getBio() != null) {
+            user.setBio(request.getBio());
+        }
+
+        if (request.getEnable() != null) {
+            user.setEnable(request.getEnable());
+        }
+
+        if (request.getRoleIds() != null) {
+            Set<Role> roles = new HashSet<>(roleRepository.findAllById(request.getRoleIds()));
+            if (roles.size() != request.getRoleIds().size()) {
+                throw new ResourceNotFoundException("One or more role IDs are invalid");
+            }
+            user.setRoles(roles);
+        }
+
+        User updatedUser = userRepository.save(user);
+        return userMapper.toResponseDTO(updatedUser);
+    }
+
+    @Override
+    @Transactional
+    public void deleteUser(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+
+        if (user.getPhotoKey() != null && !user.getPhotoKey().isBlank()) {
+            r2StorageService.deleteFile(user.getPhotoKey());
+        }
+
+        userRepository.delete(user);
     }
 
 
