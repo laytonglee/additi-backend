@@ -10,5 +10,6 @@ public interface OrderService {
     Order createOrderFromCart(User user, CheckoutRequest request);
     Order getOrderById(Long orderId);
     List<Order> getUserOrders(User user);
+    List<Order> getAllOrders();
     Order updateOrderStatus(Long orderId, Order.OrderStatus status);
 }

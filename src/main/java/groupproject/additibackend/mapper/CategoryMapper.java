@@ -39,7 +39,6 @@ public class CategoryMapper {
             response.setCreatedByEmail(u.getEmail());
             response.setCreatedByUsername(u.getRealUsername());
             response.setCreatedByPhoto(u.getPhoto());
-            // or category.getCreatedBy().getUsername() if you prefer email/override behavior
         }
         return response;
     }

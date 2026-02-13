@@ -30,23 +30,6 @@ public interface ProductService {
             ProductUpdateRequest request,
             Map<Integer ,List<MultipartFile>> varaintImages
     ) throws IOException;
-
-//    PageResponse<ProductResponse> getAllProducts(
-//            String search,
-//            String categorySlug,
-//            BigDecimal minPrice,
-//            BigDecimal maxPrice,
-//            LocalDate startDate,
-//            LocalDate endDate,
-//            String size,
-//            String color,
-//            int page,
-//            int limit,
-//            String sortBy,
-//            String sortDir
-//    );
-
-
     ProductResponse uploadImage(Long productId, Long variantId, List<MultipartFile> files) throws IOException;
 
     ProductDetailResponse getProductById(Long id);

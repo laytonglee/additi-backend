@@ -1,5 +1,6 @@
 package groupproject.additibackend.repository;
 
+import groupproject.additibackend.model.Order;
 import groupproject.additibackend.model.Product;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +19,16 @@ import java.util.Optional;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
+
+    interface BestSellerProjection {
+        Product getProduct();
+        Long getTotalSold();
+    }
+
+    interface ProductSalesProjection {
+        Long getProductId();
+        Long getTotalSold();
+    }
 
     @Query(
             value = """
@@ -100,12 +111,32 @@ WHERE p.id = :id
     Optional<Product> findProductById(@Param("id") Long id);
 
     @Query("""
-    select p from Product p
-    where p.isActive = true
-      and p.status = groupproject.additibackend.model.ProductStatus.ACTIVE
-    order by p.salesCount desc, p.createdAt desc
+    select oi.product as product, coalesce(sum(oi.quantity), 0) as totalSold
+    from OrderItem oi
+    join oi.order o
+    where oi.product.isActive = true
+      and oi.product.status = groupproject.additibackend.model.ProductStatus.ACTIVE
+      and o.status in :statuses
+    group by oi.product
+    order by totalSold desc, max(o.createdAt) desc
     """)
-    List<Product> findBestSellers(Pageable pageable);
+    List<BestSellerProjection> findBestSellersByOrderStatuses(
+            @Param("statuses") List<Order.OrderStatus> statuses,
+            Pageable pageable
+    );
+
+    @Query("""
+    select oi.product.id as productId, coalesce(sum(oi.quantity), 0) as totalSold
+    from OrderItem oi
+    join oi.order o
+    where oi.product.id in :productIds
+      and o.status in :statuses
+    group by oi.product.id
+    """)
+    List<ProductSalesProjection> findProductSalesByIdsAndOrderStatuses(
+            @Param("productIds") List<Long> productIds,
+            @Param("statuses") List<Order.OrderStatus> statuses
+    );
 
     @Query("""
     select p from Product p
@@ -128,7 +159,6 @@ WHERE p.id = :id
       p.createdAt desc
     """)
     List<Product> findComingSoonProducts();
-
 
     // count product by category
     Long countByCategoryId(Long categoryId);
