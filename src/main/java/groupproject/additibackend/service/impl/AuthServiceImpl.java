@@ -74,22 +74,34 @@ public class AuthServiceImpl implements AuthService {
 
         Cookie accessCookie = new Cookie("accessToken", accessToken);
         accessCookie.setHttpOnly(true);
-        accessCookie.setSecure(false); // true in production (HTTPS)
+        accessCookie.setSecure(true); // true in production (HTTPS)
         accessCookie.setPath("/");
         accessCookie.setMaxAge((int) (jwtProperties.getExpiration() / 1000)); // 10 minute
 
         Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
         refreshCookie.setHttpOnly(true);
-        refreshCookie.setSecure(false); // true in production
+        refreshCookie.setSecure(true); // true in production
         refreshCookie.setPath("/");
-        refreshCookie.setMaxAge((int) (jwtProperties.getRefreshExpiration() / 1000)); // 60 minutes
+        refreshCookie.setMaxAge((int) (jwtProperties.getRefreshExpiration() / 1000)); // 2 hours
 
-        response.addCookie(accessCookie);
-        response.addCookie(refreshCookie);
+//        response.addCookie(accessCookie);
+//        response.addCookie(refreshCookie);
+        response.addHeader("Set-Cookie",
+                "accessToken=" + accessToken +
+                        "; HttpOnly; Secure; Path=/; SameSite=None; Max-Age=" +
+                        (jwtProperties.getExpiration() / 1000));
+
+        response.addHeader("Set-Cookie",
+                "refreshToken=" + refreshToken +
+                        "; HttpOnly; Secure; Path=/; SameSite=None; Max-Age=" +
+                        (jwtProperties.getRefreshExpiration() / 1000));
+
+
+
 
         AuthResponse authResponse = new AuthResponse();
         authResponse.setType("Bearer");
-        authResponse.setAccessToken(refreshToken);
+        authResponse.setAccessToken(accessToken);
         authResponse.setRefreshToken(refreshToken);
         authResponse.setRoles(user.getRoles()
                 .stream()
@@ -136,9 +148,13 @@ public class AuthServiceImpl implements AuthService {
             refreshTokenService.revoke(refreshToken);
         }
 
-        deleteCookie("refreshToken", response);
-        deleteCookie("accessToken", response);
+        response.addHeader("Set-Cookie",
+                "accessToken=; HttpOnly; Secure; Path=/; SameSite=None; Max-Age=0");
+
+        response.addHeader("Set-Cookie",
+                "refreshToken=; HttpOnly; Secure; Path=/; SameSite=None; Max-Age=0");
     }
+
 
     private void deleteCookie(String name, HttpServletResponse response) {
         Cookie cookie = new Cookie(name, "");
@@ -151,11 +167,7 @@ public class AuthServiceImpl implements AuthService {
 
 
     @Override
-    public ResponseEntity<?> refresh(
-            String refreshToken,
-            HttpServletResponse response
-    ) {
-
+    public ResponseEntity<?> refresh(String refreshToken, HttpServletResponse response) {
         if (refreshToken == null ||
                 !jwtService.validateRefreshToken(refreshToken)) {
 
@@ -173,16 +185,12 @@ public class AuthServiceImpl implements AuthService {
         // ✅ IMPORTANT: Update access cookie
         Cookie accessCookie = new Cookie("accessToken", newAccessToken);
         accessCookie.setHttpOnly(true);
-        accessCookie.setSecure(false); // true in production
+        accessCookie.setSecure(true); // true in production
         accessCookie.setPath("/");
-        accessCookie.setMaxAge((int) (jwtProperties.getRefreshExpiration() / 1000));
+        accessCookie.setMaxAge((int) (jwtProperties.getExpiration() / 1000));
 
         response.addCookie(accessCookie);
 
         return ResponseEntity.ok(Map.of("message", "Token refreshed"));
     }
-
-
-
-
 }
