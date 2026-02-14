@@ -171,9 +171,8 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public ResponseEntity<?> refresh(String refreshToken, HttpServletResponse response) {
-        if (refreshToken == null ||
-                !jwtService.validateRefreshToken(refreshToken)) {
 
+        if (refreshToken == null || !jwtService.validateRefreshToken(refreshToken)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("message", "Invalid refresh token"));
         }
@@ -185,15 +184,12 @@ public class AuthServiceImpl implements AuthService {
 
         String newAccessToken = jwtService.generateAccessToken(user);
 
-        // ✅ IMPORTANT: Update access cookie
-        Cookie accessCookie = new Cookie("accessToken", newAccessToken);
-        accessCookie.setHttpOnly(true);
-        accessCookie.setSecure(true); // true in production
-        accessCookie.setPath("/");
-        accessCookie.setMaxAge((int) (jwtProperties.getExpiration() / 1000));
-
-        response.addCookie(accessCookie);
+        response.addHeader("Set-Cookie",
+                "accessToken=" + newAccessToken +
+                        "; HttpOnly; Secure; Path=/; SameSite=None; Max-Age=" +
+                        (jwtProperties.getExpiration() / 1000));
 
         return ResponseEntity.ok(Map.of("message", "Token refreshed"));
     }
+
 }
