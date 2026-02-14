@@ -37,8 +37,8 @@ FROM products p
 JOIN categories c ON c.id = p.category_id
 LEFT JOIN product_variants pv
   ON pv.product_id = p.id
- AND (:size IS NULL OR pv.size = :size)
- AND (:color IS NULL OR pv.color = :color)
+ AND (:size IS NULL OR LOWER(pv.size) = LOWER(:size))
+ AND (:color IS NULL OR LOWER(pv.color) = LOWER(:color))
 WHERE (
     :search IS NULL
     OR p.name ILIKE '%' || :search || '%'
@@ -50,6 +50,7 @@ AND (:maxPrice IS NULL OR p.price <= :maxPrice)
 AND (:startDate IS NULL OR p.created_at >= :startDate)
 AND (:endDate IS NULL OR p.created_at < :endDate + INTERVAL '1 day')
 AND (:createdById IS NULL OR p.created_by_user_id = :createdById)
+AND ((:size IS NULL AND :color IS NULL) OR pv.id IS NOT NULL)
 """,
             countQuery = """
 SELECT COUNT(DISTINCT p.id)
@@ -57,8 +58,8 @@ FROM products p
 JOIN categories c ON c.id = p.category_id
 LEFT JOIN product_variants pv
   ON pv.product_id = p.id
- AND (:size IS NULL OR pv.size = :size)
- AND (:color IS NULL OR pv.color = :color)
+ AND (:size IS NULL OR LOWER(pv.size) = LOWER(:size))
+ AND (:color IS NULL OR LOWER(pv.color) = LOWER(:color))
 WHERE (
     :search IS NULL
     OR p.name ILIKE '%' || :search || '%'
@@ -70,6 +71,7 @@ AND (:maxPrice IS NULL OR p.price <= :maxPrice)
 AND (:startDate IS NULL OR p.created_at >= :startDate)
 AND (:endDate IS NULL OR p.created_at < :endDate + INTERVAL '1 day')
 AND (:createdById IS NULL OR p.created_by_user_id = :createdById)
+AND ((:size IS NULL AND :color IS NULL) OR pv.id IS NOT NULL)
 """,
             nativeQuery = true
     )
